@@ -6,12 +6,19 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
-struct plantlifeappApp: App {
+struct PlantlifeApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: [
+            PlayerState.self,
+            Plant.self,
+            DecorItem.self,
+            RoomState.self
+        ])
     }
 }
