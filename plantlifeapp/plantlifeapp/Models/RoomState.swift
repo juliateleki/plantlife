@@ -11,27 +11,15 @@ import SwiftData
 @Model
 final class RoomState {
     var roomTypeRaw: String
-    var placedItemIDs: [String] // simple MVP: list of decor IDs placed in this room
+    var isRugPlaced: Bool
 
-    init(roomType: RoomType, placedItemIDs: [String] = []) {
+    init(roomType: RoomType, isRugPlaced: Bool = false) {
         self.roomTypeRaw = roomType.rawValue
-        self.placedItemIDs = placedItemIDs
+        self.isRugPlaced = isRugPlaced
     }
 
     var roomType: RoomType {
         get { RoomType(rawValue: roomTypeRaw) ?? .living }
         set { roomTypeRaw = newValue.rawValue }
-    }
-
-    func isPlaced(_ itemID: String) -> Bool {
-        placedItemIDs.contains(itemID)
-    }
-
-    func togglePlaced(_ itemID: String) {
-        if let idx = placedItemIDs.firstIndex(of: itemID) {
-            placedItemIDs.remove(at: idx)
-        } else {
-            placedItemIDs.append(itemID)
-        }
     }
 }

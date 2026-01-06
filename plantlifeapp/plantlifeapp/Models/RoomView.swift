@@ -34,19 +34,22 @@ struct RoomView: View {
                         .foregroundStyle(.secondary)
 
                     // Placed decor preview (MVP)
-                    if room.isPlaced("rug_01") {
-                        Text("🟫 Cozy Rug (placed)")
-                            .padding(.top, 8)
-                    } else {
-                        Text("No decor placed yet")
-                            .padding(.top, 8)
-                            .foregroundStyle(.secondary)
-                    }
+                  if room.isRugPlaced {
+                      Text("🟫 Cozy Rug (placed)")
+                          .padding(.top, 8)
+                  } else {
+                      Text("No decor placed yet")
+                          .padding(.top, 8)
+                          .foregroundStyle(.secondary)
+                  }
+
                 }
             }
 
             // Quick place/unplace controls (owned items only)
-            let owned = items.filter { $0.isOwned && $0.roomType == .living }
+          let owned = items.filter { $0.isOwned && $0.roomType == RoomType.living }
+
+
             if !owned.isEmpty {
                 Text("Your items")
                     .font(.headline)
@@ -57,7 +60,8 @@ struct RoomView: View {
                             Button {
                                 onTogglePlace(item)
                             } label: {
-                                Text(room.isPlaced(item.id) ? "Remove \(item.name)" : "Place \(item.name)")
+                              Text(room.isRugPlaced ? "Remove \(item.name)" : "Place \(item.name)")
+
                                     .padding(.vertical, 10)
                                     .padding(.horizontal, 14)
                                     .background(.ultraThinMaterial)

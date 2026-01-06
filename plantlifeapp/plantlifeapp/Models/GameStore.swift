@@ -14,10 +14,10 @@ final class GameStore: ObservableObject {
     private let tickInterval: TimeInterval = 1.0
 
     func start(modelContext: ModelContext) {
-        // apply offline earnings once on start
+        // Apply offline earnings once on start
         applyOfflineEarnings(modelContext: modelContext)
 
-        // start live ticking
+        // Start live ticking
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -36,15 +36,21 @@ final class GameStore: ObservableObject {
         guard let player = fetchPlayer(modelContext),
               let plant = fetchPlant(modelContext) else { return }
 
-        // coinsPerMinute -> coins per second
         let coinsPerSecond = plant.coinsPerMinute / 60.0
-        // accumulate with rounding — MVP uses integer coins
-        player.coins += Int(coinsPerSecond.rounded(.toNearestOrAwayFromZero))
+        player.coinBank += coinsPerSecond
+
+        // Convert whole coins from bank → coins
+        let whole = Int(player.coinBank)
+        if whole > 0 {
+            player.coins += whole
+            player.coinBank -= Double(whole)
+        }
+
         player.lastActiveAt = .now
         try? modelContext.save()
     }
 
-    func applyOfflineEarnings(modelContext: ModelContext) {
+    private func applyOfflineEarnings(modelContext: ModelContext) {
         guard let player = fetchPlayer(modelContext),
               let plant = fetchPlant(modelContext) else { return }
 
@@ -53,11 +59,14 @@ final class GameStore: ObservableObject {
         if elapsed <= 0 { return }
 
         let coinsPerSecond = plant.coinsPerMinute / 60.0
-        let earned = Int((elapsed * coinsPerSecond).rounded(.down))
+        player.coinBank += elapsed * coinsPerSecond
 
-        if earned > 0 {
-            player.coins += earned
+        let whole = Int(player.coinBank)
+        if whole > 0 {
+            player.coins += whole
+            player.coinBank -= Double(whole)
         }
+
         player.lastActiveAt = now
         try? modelContext.save()
     }
@@ -73,11 +82,20 @@ final class GameStore: ObservableObject {
         return true
     }
 
-    func togglePlace(item: DecorItem, in room: RoomState, modelContext: ModelContext) {
-        guard item.isOwned else { return }
-        room.togglePlaced(item.id)
-        try? modelContext.save()
-    }
+  func togglePlace(item: DecorItem, in room: RoomState, modelContext: ModelContext) {
+      guard item.isOwned else { return }
+
+      if item.id == "rug_01" {
+          room.isRugPlaced.toggle()
+      }
+
+      do {
+          try modelContext.save()
+      } catch {
+          print("❌ Save failed in togglePlace:", error)
+      }
+  }
+
 
     private func updateLastActive(modelContext: ModelContext) {
         guard let player = fetchPlayer(modelContext) else { return }
