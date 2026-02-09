@@ -58,6 +58,7 @@ That’s it. The loop is intentionally simple.
 - Swift Testing framework
 - Unit tests for economy, purchases, placement, and offline earnings
 
+```
 plantlifeapp/
 ├─ plantlifeApp.swift # App entry point & seeding
 ├─ ContentView.swift # Main screen
@@ -71,6 +72,7 @@ plantlifeapp/
 │ └─ ShopView.swift # Shop UI
 ├─ Assets.xcassets # App icons & future decor assets
 ├─ plantlifeappTests/ # SwiftData unit tests
+```
 
 ---
 
