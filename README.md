@@ -58,6 +58,10 @@ That’s it. The loop is intentionally simple.
 - Swift Testing framework
 - Unit tests for economy, purchases, placement, and offline earnings
 
+---
+
+## 🗂️ Project Structure
+
 ```
 plantlifeapp/
 ├─ plantlifeApp.swift # App entry point & seeding
@@ -73,10 +77,6 @@ plantlifeapp/
 ├─ Assets.xcassets # App icons & future decor assets
 ├─ plantlifeappTests/ # SwiftData unit tests
 ```
-
----
-
-## 🗂️ Project Structure
 
 ---
 
