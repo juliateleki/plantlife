@@ -13,15 +13,18 @@ final class GameStore: ObservableObject {
     private var timer: Timer?
     private let tickInterval: TimeInterval = 1.0
 
-    func start(modelContext: ModelContext) {
-        // Apply offline earnings once on start
-        applyOfflineEarnings(modelContext: modelContext)
+    // Store the context to avoid capturing a non-Sendable ModelContext in the Timer closure.
+    private var ctx: ModelContext?
 
-        // Start live ticking
+    func start(modelContext: ModelContext) {
+        ctx = modelContext
+        applyOfflineEarnings(now: .now)
+
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
+            guard let self else { return }
             Task { @MainActor in
-                self?.tick(modelContext: modelContext)
+                self.tick(now: .now)
             }
         }
     }
@@ -29,32 +32,35 @@ final class GameStore: ObservableObject {
     func stop(modelContext: ModelContext) {
         timer?.invalidate()
         timer = nil
-        updateLastActive(modelContext: modelContext)
+        ctx = modelContext
+        updateLastActive(now: .now)
     }
 
-    private func tick(modelContext: ModelContext) {
-        guard let player = fetchPlayer(modelContext),
+    // Exposed for tests (deterministic with injected time).
+    func tick(now: Date = .now) {
+        guard let modelContext = ctx,
+              let player = fetchPlayer(modelContext),
               let plant = fetchPlant(modelContext) else { return }
 
         let coinsPerSecond = plant.coinsPerMinute / 60.0
         player.coinBank += coinsPerSecond
 
-        // Convert whole coins from bank → coins
         let whole = Int(player.coinBank)
         if whole > 0 {
             player.coins += whole
             player.coinBank -= Double(whole)
         }
 
-        player.lastActiveAt = .now
+        player.lastActiveAt = now
         try? modelContext.save()
     }
 
-    private func applyOfflineEarnings(modelContext: ModelContext) {
-        guard let player = fetchPlayer(modelContext),
+    // Exposed for tests (deterministic with injected time).
+    func applyOfflineEarnings(now: Date = .now) {
+        guard let modelContext = ctx,
+              let player = fetchPlayer(modelContext),
               let plant = fetchPlant(modelContext) else { return }
 
-        let now = Date()
         let elapsed = now.timeIntervalSince(player.lastActiveAt)
         if elapsed <= 0 { return }
 
@@ -72,6 +78,8 @@ final class GameStore: ObservableObject {
     }
 
     func buy(item: DecorItem, modelContext: ModelContext) -> Bool {
+        ctx = modelContext
+
         guard let player = fetchPlayer(modelContext) else { return false }
         guard !item.isOwned else { return true }
         guard player.coins >= item.price else { return false }
@@ -82,24 +90,28 @@ final class GameStore: ObservableObject {
         return true
     }
 
-  func togglePlace(item: DecorItem, in room: RoomState, modelContext: ModelContext) {
-      guard item.isOwned else { return }
+    func togglePlace(item: DecorItem, in room: RoomState, modelContext: ModelContext) {
+        ctx = modelContext
 
-      if item.id == "rug_01" {
-          room.isRugPlaced.toggle()
-      }
+        guard item.isOwned else { return }
 
-      do {
-          try modelContext.save()
-      } catch {
-          print("❌ Save failed in togglePlace:", error)
-      }
-  }
+        if let idx = room.placedItemIDs.firstIndex(of: item.id) {
+            room.placedItemIDs.remove(at: idx)
+        } else {
+            room.placedItemIDs.append(item.id)
+        }
 
+        do {
+            try modelContext.save()
+        } catch {
+            print("❌ Save failed in togglePlace:", error)
+        }
+    }
 
-    private func updateLastActive(modelContext: ModelContext) {
-        guard let player = fetchPlayer(modelContext) else { return }
-        player.lastActiveAt = .now
+    private func updateLastActive(now: Date = .now) {
+        guard let modelContext = ctx,
+              let player = fetchPlayer(modelContext) else { return }
+        player.lastActiveAt = now
         try? modelContext.save()
     }
 

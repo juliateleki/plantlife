@@ -16,6 +16,20 @@ struct RoomView: View {
     let items: [DecorItem]
     let onTogglePlace: (DecorItem) -> Void
 
+    private func emoji(for itemID: String) -> String {
+        switch itemID {
+        case "rug_01": return "🟫"
+        case "chair_01": return "🪑"
+        case "couch_01": return "🛋️"
+        default: return "📦"
+        }
+    }
+
+    private func placedSummary() -> String {
+        if room.placedItemIDs.isEmpty { return "No decor placed yet" }
+        return room.placedItemIDs.map { emoji(for: $0) }.joined(separator: " ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Living Room")
@@ -33,22 +47,13 @@ struct RoomView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
-                    // Placed decor preview (MVP)
-                  if room.isRugPlaced {
-                      Text("🟫 Cozy Rug (placed)")
-                          .padding(.top, 8)
-                  } else {
-                      Text("No decor placed yet")
-                          .padding(.top, 8)
-                          .foregroundStyle(.secondary)
-                  }
-
+                    Text(placedSummary())
+                        .padding(.top, 8)
+                        .foregroundStyle(room.placedItemIDs.isEmpty ? .secondary : .primary)
                 }
             }
 
-            // Quick place/unplace controls (owned items only)
-          let owned = items.filter { $0.isOwned && $0.roomType == RoomType.living }
-
+            let owned = items.filter { $0.isOwned && $0.roomType == RoomType.living }
 
             if !owned.isEmpty {
                 Text("Your items")
@@ -57,11 +62,12 @@ struct RoomView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
                         ForEach(owned) { item in
+                            let isPlaced = room.placedItemIDs.contains(item.id)
+
                             Button {
                                 onTogglePlace(item)
                             } label: {
-                              Text(room.isRugPlaced ? "Remove \(item.name)" : "Place \(item.name)")
-
+                                Text(isPlaced ? "Remove \(item.name)" : "Place \(item.name)")
                                     .padding(.vertical, 10)
                                     .padding(.horizontal, 14)
                                     .background(.ultraThinMaterial)
