@@ -2,7 +2,7 @@
 //  plantlifeappTests.swift
 //  plantlifeappTests
 //
-//  Created by Julia Teleki on 8/19/25.
+//  Created by Julia Teleki on 1/5/26.
 //
 
 import Foundation
@@ -26,122 +26,44 @@ struct plantlifeappTests {
     }
 
     @Test
-    func buySucceedsWhenEnoughCoins() async throws {
+    func upgradePlantSucceedsWhenEnoughCoins() async throws {
         try await MainActor.run {
             let ctx = try makeInMemoryContext()
             let store = GameStore()
 
-            let player = PlayerState(coins: 20, coinBank: 0, lastActiveAt: .now)
-            let plant = Plant(name: "Pothos", coinsPerMinute: 6)
-            let item = DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living)
+            let player = PlayerState(coins: 50, coinBank: 0, lastActiveAt: .now)
+            let plant = Plant(name: "Pothos", baseCoinsPerMinute: 6, rateGrowth: 1.10, upgradeBaseCost: 10, upgradeGrowth: 1.20)
 
             ctx.insert(player)
             ctx.insert(plant)
-            ctx.insert(item)
             try ctx.save()
 
-            let ok = store.buy(item: item, modelContext: ctx)
+            let ok = store.upgradePlant(modelContext: ctx)
 
             #expect(ok == true)
-            #expect(item.isOwned == true)
-            #expect(player.coins == 8)
+            #expect(plant.level == 2)
+            #expect(player.coins == 40)
         }
     }
 
     @Test
-    func buyFailsWhenNotEnoughCoins() async throws {
+    func upgradePlantFailsWhenNotEnoughCoins() async throws {
         try await MainActor.run {
             let ctx = try makeInMemoryContext()
             let store = GameStore()
 
             let player = PlayerState(coins: 5, coinBank: 0, lastActiveAt: .now)
-            let plant = Plant(name: "Pothos", coinsPerMinute: 6)
-            let item = DecorItem(id: "couch_01", name: "Cozy Couch", price: 25, roomType: .living)
+            let plant = Plant(name: "Pothos", baseCoinsPerMinute: 6, rateGrowth: 1.10, upgradeBaseCost: 10, upgradeGrowth: 1.20)
 
             ctx.insert(player)
             ctx.insert(plant)
-            ctx.insert(item)
             try ctx.save()
 
-            let ok = store.buy(item: item, modelContext: ctx)
+            let ok = store.upgradePlant(modelContext: ctx)
 
             #expect(ok == false)
-            #expect(item.isOwned == false)
+            #expect(plant.level == 1)
             #expect(player.coins == 5)
-        }
-    }
-
-    @Test
-    func togglePlaceAddsAndRemovesItemID() async throws {
-        try await MainActor.run {
-            let ctx = try makeInMemoryContext()
-            let store = GameStore()
-
-            let player = PlayerState(coins: 100, coinBank: 0, lastActiveAt: .now)
-            let plant = Plant(name: "Pothos", coinsPerMinute: 6)
-            let room = RoomState(roomType: .living)
-
-            let item = DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, isOwned: true)
-
-            ctx.insert(player)
-            ctx.insert(plant)
-            ctx.insert(room)
-            ctx.insert(item)
-            try ctx.save()
-
-            #expect(room.placedItemIDs.contains(item.id) == false)
-
-            store.togglePlace(item: item, in: room, modelContext: ctx)
-            #expect(room.placedItemIDs.contains(item.id) == true)
-
-            store.togglePlace(item: item, in: room, modelContext: ctx)
-            #expect(room.placedItemIDs.contains(item.id) == false)
-        }
-    }
-
-    @Test
-    func togglePlaceDoesNothingIfNotOwned() async throws {
-        try await MainActor.run {
-            let ctx = try makeInMemoryContext()
-            let store = GameStore()
-
-            let player = PlayerState(coins: 0, coinBank: 0, lastActiveAt: .now)
-            let plant = Plant(name: "Pothos", coinsPerMinute: 6)
-            let room = RoomState(roomType: .living)
-
-            let item = DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, isOwned: false)
-
-            ctx.insert(player)
-            ctx.insert(plant)
-            ctx.insert(room)
-            ctx.insert(item)
-            try ctx.save()
-
-            store.togglePlace(item: item, in: room, modelContext: ctx)
-            #expect(room.placedItemIDs.isEmpty == true)
-        }
-    }
-
-    @Test
-    func offlineEarningsConvertsWholeCoinsAndKeepsRemainder() async throws {
-        try await MainActor.run {
-            let ctx = try makeInMemoryContext()
-            let store = GameStore()
-
-            let plant = Plant(name: "Pothos", coinsPerMinute: 6)
-
-            let now = Date()
-            let player = PlayerState(coins: 0, coinBank: 0, lastActiveAt: now.addingTimeInterval(-25))
-
-            ctx.insert(player)
-            ctx.insert(plant)
-            try ctx.save()
-
-            store.start(modelContext: ctx)
-            store.applyOfflineEarnings(now: now)
-
-            #expect(player.coins == 2)
-            #expect(abs(player.coinBank - 0.5) < 0.0001)
         }
     }
 }

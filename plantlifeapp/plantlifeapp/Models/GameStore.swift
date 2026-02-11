@@ -2,6 +2,8 @@
 //  GameStore.swift
 //  plantlifeapp
 //
+//  Created by Julia Teleki on 1/5/26.
+//
 
 import Foundation
 import SwiftData
@@ -100,6 +102,23 @@ final class GameStore: ObservableObject {
         room.placedItemIDs = placed
 
         try? modelContext.save()
+    }
+
+    // New: Plant upgrade
+    func upgradePlant(modelContext: ModelContext) -> Bool {
+        ctx = modelContext
+
+        guard let player = fetchPlayer(modelContext),
+              let plant = fetchPlant(modelContext) else { return false }
+
+        let cost = plant.nextUpgradeCost
+        guard player.coins >= cost else { return false }
+
+        player.coins -= cost
+        plant.level += 1
+
+        try? modelContext.save()
+        return true
     }
 
     private func updateLastActive(now: Date = .now) {
