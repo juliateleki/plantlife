@@ -2,11 +2,8 @@
 //  RoomView.swift
 //  plantlifeapp
 //
-//  Created by Julia Teleki on 1/5/26.
-//
 
 import SwiftUI
-import SwiftData
 
 struct RoomView: View {
     let plantName: String
@@ -26,8 +23,9 @@ struct RoomView: View {
     }
 
     private func placedSummary() -> String {
-        if room.placedItemIDs.isEmpty { return "No decor placed yet" }
-        return room.placedItemIDs.map { emoji(for: $0) }.joined(separator: " ")
+        let placed = room.placedItemIDs
+        if placed.isEmpty { return "No decor placed yet" }
+        return placed.map { emoji(for: $0) }.joined(separator: " ")
     }
 
     var body: some View {
@@ -43,6 +41,7 @@ struct RoomView: View {
                 VStack(spacing: 10) {
                     Text("🪴 \(plantName)")
                         .font(.title2)
+
                     Text("\(plantRate, specifier: "%.1f") coins / min")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -53,7 +52,7 @@ struct RoomView: View {
                 }
             }
 
-            let owned = items.filter { $0.isOwned && $0.roomType == RoomType.living }
+            let owned = items.filter { $0.isOwned && $0.roomType == .living }
 
             if !owned.isEmpty {
                 Text("Your items")

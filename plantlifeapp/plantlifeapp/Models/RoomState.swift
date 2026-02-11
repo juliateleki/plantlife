@@ -2,8 +2,6 @@
 //  RoomState.swift
 //  plantlifeapp
 //
-//  Created by Julia Teleki on 1/5/26.
-//
 
 import Foundation
 import SwiftData
@@ -12,7 +10,8 @@ import SwiftData
 final class RoomState {
     var roomTypeRaw: String
 
-    // Persist as JSON Data to avoid SwiftData transformable ambiguity on [String].
+    // Persist placed decor IDs as JSON Data for SwiftData stability.
+    // This avoids @Attribute(.transformable) ambiguity issues with [String].
     var placedItemIDsJSON: Data
 
     init(roomType: RoomType, placedItemIDs: [String] = []) {
@@ -25,7 +24,8 @@ final class RoomState {
         set { roomTypeRaw = newValue.rawValue }
     }
 
-    // Public API used by the rest of the app.
+    // The rest of the app uses this. It looks like a normal [String],
+    // but it persists as JSON Data under the hood.
     var placedItemIDs: [String] {
         get {
             (try? JSONDecoder().decode([String].self, from: placedItemIDsJSON)) ?? []

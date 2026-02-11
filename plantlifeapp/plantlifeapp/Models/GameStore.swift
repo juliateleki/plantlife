@@ -2,8 +2,6 @@
 //  GameStore.swift
 //  plantlifeapp
 //
-//  Created by Julia Teleki on 1/5/26.
-//
 
 import Foundation
 import SwiftData
@@ -13,7 +11,7 @@ final class GameStore: ObservableObject {
     private var timer: Timer?
     private let tickInterval: TimeInterval = 1.0
 
-    // Store the context to avoid capturing a non-Sendable ModelContext in the Timer closure.
+    // Stored context so the timer closure does not capture ModelContext directly.
     private var ctx: ModelContext?
 
     func start(modelContext: ModelContext) {
@@ -36,7 +34,6 @@ final class GameStore: ObservableObject {
         updateLastActive(now: .now)
     }
 
-    // Exposed for tests (deterministic with injected time).
     func tick(now: Date = .now) {
         guard let modelContext = ctx,
               let player = fetchPlayer(modelContext),
@@ -55,7 +52,6 @@ final class GameStore: ObservableObject {
         try? modelContext.save()
     }
 
-    // Exposed for tests (deterministic with injected time).
     func applyOfflineEarnings(now: Date = .now) {
         guard let modelContext = ctx,
               let player = fetchPlayer(modelContext),
@@ -95,17 +91,15 @@ final class GameStore: ObservableObject {
 
         guard item.isOwned else { return }
 
-        if let idx = room.placedItemIDs.firstIndex(of: item.id) {
-            room.placedItemIDs.remove(at: idx)
+        var placed = room.placedItemIDs
+        if let idx = placed.firstIndex(of: item.id) {
+            placed.remove(at: idx)
         } else {
-            room.placedItemIDs.append(item.id)
+            placed.append(item.id)
         }
+        room.placedItemIDs = placed
 
-        do {
-            try modelContext.save()
-        } catch {
-            print("❌ Save failed in togglePlace:", error)
-        }
+        try? modelContext.save()
     }
 
     private func updateLastActive(now: Date = .now) {
@@ -115,15 +109,11 @@ final class GameStore: ObservableObject {
         try? modelContext.save()
     }
 
-    // MARK: - Fetch helpers
-
     private func fetchPlayer(_ modelContext: ModelContext) -> PlayerState? {
-        let descriptor = FetchDescriptor<PlayerState>()
-        return (try? modelContext.fetch(descriptor))?.first
+        (try? modelContext.fetch(FetchDescriptor<PlayerState>()))?.first
     }
 
     private func fetchPlant(_ modelContext: ModelContext) -> Plant? {
-        let descriptor = FetchDescriptor<Plant>()
-        return (try? modelContext.fetch(descriptor))?.first
+        (try? modelContext.fetch(FetchDescriptor<Plant>()))?.first
     }
 }
