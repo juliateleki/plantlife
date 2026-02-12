@@ -16,6 +16,9 @@ final class GameStore: ObservableObject {
     // Stored context so the timer closure does not capture ModelContext directly.
     private var ctx: ModelContext?
 
+    // Safety cap so a bad timestamp can't generate absurd amounts of coins.
+    private let maxOfflineSeconds: TimeInterval = 7 * 24 * 60 * 60
+
     func start(modelContext: ModelContext) {
         ctx = modelContext
         applyOfflineProgress(now: .now)
@@ -41,18 +44,16 @@ final class GameStore: ObservableObject {
               let player = fetchPlayer(modelContext),
               let plant = fetchActivePlant(modelContext, player: player) else { return }
 
-        // Auto growth while running
+        clampPlayerCoinsIfNeeded(player)
+
         _ = plant.applyAutoGrowth(now: now)
 
-        // Earn coins
         let coinsPerSecond = plant.coinsPerMinute / 60.0
-        player.coinBank += coinsPerSecond
-
-        let whole = Int(player.coinBank)
-        if whole > 0 {
-            player.coins += whole
-            player.coinBank -= Double(whole)
+        if coinsPerSecond.isFinite, coinsPerSecond > 0 {
+            player.coinBank += coinsPerSecond
         }
+
+        cashOutCoinBankSafely(player: player)
 
         player.lastActiveAt = now
         try? modelContext.save()
@@ -63,41 +64,73 @@ final class GameStore: ObservableObject {
               let player = fetchPlayer(modelContext),
               let plant = fetchActivePlant(modelContext, player: player) else { return }
 
+        clampPlayerCoinsIfNeeded(player)
+
         let start = player.lastActiveAt
-        if now <= start { return }
+        guard now > start else { return }
 
-        if plant.lastGrowthAt > now {
-            plant.lastGrowthAt = start
+        var elapsed = now.timeIntervalSince(start)
+        if elapsed > maxOfflineSeconds {
+            elapsed = maxOfflineSeconds
+        }
+        if !elapsed.isFinite || elapsed < 0 {
+            elapsed = 0
         }
 
-        var t = start
-        while t < now {
-            let nextGrowth = plant.lastGrowthAt.addingTimeInterval(plant.growthSecondsPerLevel)
-            let segmentEnd = min(now, nextGrowth)
+        _ = plant.applyAutoGrowth(now: now)
 
-            let dt = segmentEnd.timeIntervalSince(t)
-            if dt > 0 {
-                let cps = plant.coinsPerMinute / 60.0
-                player.coinBank += dt * cps
-            }
-
-            if segmentEnd >= nextGrowth && nextGrowth <= now {
-                plant.level += 1
-                plant.lastGrowthAt = nextGrowth
-            }
-
-            t = segmentEnd
-            if dt == 0 { break }
+        let coinsPerSecond = plant.coinsPerMinute / 60.0
+        if coinsPerSecond.isFinite, coinsPerSecond > 0, elapsed > 0 {
+            player.coinBank += elapsed * coinsPerSecond
         }
 
-        let whole = Int(player.coinBank)
-        if whole > 0 {
-            player.coins += whole
-            player.coinBank -= Double(whole)
-        }
+        cashOutCoinBankSafely(player: player)
 
         player.lastActiveAt = now
         try? modelContext.save()
+    }
+
+    private func clampPlayerCoinsIfNeeded(_ player: PlayerState) {
+        // If something ever put coins out of range, clamp it.
+        if player.coins < 0 { player.coins = 0 }
+        // Int can't exceed Int.max in memory, but leaving this here for clarity.
+    }
+
+    private func addCoinsClamped(_ amount: Int, to player: PlayerState) {
+        guard amount > 0 else { return }
+        let headroom = Int.max - player.coins
+        if headroom <= 0 {
+            player.coins = Int.max
+            return
+        }
+        player.coins += min(amount, headroom)
+    }
+
+    private func cashOutCoinBankSafely(player: PlayerState) {
+        if !player.coinBank.isFinite || player.coinBank < 0 {
+            player.coinBank = 0
+            return
+        }
+
+        let wholeDouble = floor(player.coinBank)
+        if wholeDouble < 1 { return }
+
+        // Convert to an Int amount without overflowing
+        let headroom = Int.max - player.coins
+        if headroom <= 0 {
+            player.coins = Int.max
+            player.coinBank = 0
+            return
+        }
+
+        let wholeToAddDouble = min(wholeDouble, Double(headroom))
+        if wholeToAddDouble < 1 { return }
+
+        let wholeToAdd = Int(wholeToAddDouble) // <= headroom, safe
+        addCoinsClamped(wholeToAdd, to: player)
+        player.coinBank -= Double(wholeToAdd)
+
+        if player.coinBank < 0 { player.coinBank = 0 }
     }
 
     func buy(item: DecorItem, modelContext: ModelContext) -> Bool {
@@ -119,7 +152,6 @@ final class GameStore: ObservableObject {
         guard let player = fetchPlayer(modelContext) else { return false }
         guard item.isOwned else { return false }
 
-        // Remove from any rooms where it's placed
         let rooms = (try? modelContext.fetch(FetchDescriptor<RoomState>())) ?? []
         for room in rooms {
             var placed = room.placedItemIDs
@@ -130,7 +162,7 @@ final class GameStore: ObservableObject {
         }
 
         item.isOwned = false
-        player.coins += item.price
+        addCoinsClamped(item.price, to: player)
 
         try? modelContext.save()
         return true
@@ -174,13 +206,12 @@ final class GameStore: ObservableObject {
         guard let player = fetchPlayer(modelContext) else { return false }
         guard plant.isOwned else { return false }
 
-        // Do not allow selling the active plant
         if player.currentPlantID == plant.id {
             return false
         }
 
         plant.isOwned = false
-        player.coins += plant.purchasePrice
+        addCoinsClamped(plant.purchasePrice, to: player)
 
         try? modelContext.save()
         return true
