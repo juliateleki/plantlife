@@ -22,19 +22,16 @@ struct ContentView: View {
     private func resolveActivePlant(player: PlayerState?, plants: [Plant]) -> Plant? {
         guard !plants.isEmpty else { return nil }
 
-        // Prefer the player's currentPlantID if it points to an owned plant
         if let player,
            let id = player.currentPlantID,
            let match = plants.first(where: { $0.id == id && $0.isOwned }) {
             return match
         }
 
-        // Otherwise use first owned plant
         if let owned = plants.first(where: { $0.isOwned }) {
             return owned
         }
 
-        // Fallback
         return plants.first
     }
 
@@ -108,8 +105,14 @@ struct ContentView: View {
                 onBuyDecor: { item in
                     _ = gameStore.buy(item: item, modelContext: modelContext)
                 },
+                onSellDecor: { item in
+                    _ = gameStore.sellDecor(item: item, modelContext: modelContext)
+                },
                 onBuyPlant: { plant in
                     _ = gameStore.buyPlant(plant: plant, modelContext: modelContext)
+                },
+                onSellPlant: { plant in
+                    _ = gameStore.sellPlant(plant: plant, modelContext: modelContext)
                 },
                 onSetActivePlant: { plant in
                     gameStore.setActivePlant(plant: plant, modelContext: modelContext)

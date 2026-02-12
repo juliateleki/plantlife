@@ -66,13 +66,10 @@ final class GameStore: ObservableObject {
         let start = player.lastActiveAt
         if now <= start { return }
 
-        // Ensure growth baseline is not ahead of time
         if plant.lastGrowthAt > now {
             plant.lastGrowthAt = start
         }
 
-        // Simulate earnings in segments so that if the plant levels up during the offline window,
-        // later segments use the higher coinsPerMinute.
         var t = start
         while t < now {
             let nextGrowth = plant.lastGrowthAt.addingTimeInterval(plant.growthSecondsPerLevel)
@@ -116,6 +113,29 @@ final class GameStore: ObservableObject {
         return true
     }
 
+    func sellDecor(item: DecorItem, modelContext: ModelContext) -> Bool {
+        ctx = modelContext
+
+        guard let player = fetchPlayer(modelContext) else { return false }
+        guard item.isOwned else { return false }
+
+        // Remove from any rooms where it's placed
+        let rooms = (try? modelContext.fetch(FetchDescriptor<RoomState>())) ?? []
+        for room in rooms {
+            var placed = room.placedItemIDs
+            if let idx = placed.firstIndex(of: item.id) {
+                placed.remove(at: idx)
+                room.placedItemIDs = placed
+            }
+        }
+
+        item.isOwned = false
+        player.coins += item.price
+
+        try? modelContext.save()
+        return true
+    }
+
     func togglePlace(item: DecorItem, in room: RoomState, modelContext: ModelContext) {
         ctx = modelContext
 
@@ -144,6 +164,23 @@ final class GameStore: ObservableObject {
         if player.currentPlantID == nil {
             player.currentPlantID = plant.id
         }
+
+        try? modelContext.save()
+        return true
+    }
+
+    func sellPlant(plant: Plant, modelContext: ModelContext) -> Bool {
+        ctx = modelContext
+        guard let player = fetchPlayer(modelContext) else { return false }
+        guard plant.isOwned else { return false }
+
+        // Do not allow selling the active plant
+        if player.currentPlantID == plant.id {
+            return false
+        }
+
+        plant.isOwned = false
+        player.coins += plant.purchasePrice
 
         try? modelContext.save()
         return true
@@ -186,8 +223,6 @@ final class GameStore: ObservableObject {
             return firstOwned
         }
 
-        // If nothing is owned, fall back to first plant.
-        // This should not happen if seeding is correct.
         return all.first
     }
 }
