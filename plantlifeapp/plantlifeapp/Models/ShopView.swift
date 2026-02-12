@@ -14,7 +14,10 @@ struct ShopView: View {
     let activePlantID: String?
 
     let onBuyDecor: (DecorItem) -> Void
+    let onSellDecor: (DecorItem) -> Void
+
     let onBuyPlant: (Plant) -> Void
+    let onSellPlant: (Plant) -> Void
     let onSetActivePlant: (Plant) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -38,11 +41,16 @@ struct ShopView: View {
                             Spacer()
 
                             if plant.isOwned {
-                                if activePlantID == plant.id {
-                                    Text("Active")
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Button("Set Active") { onSetActivePlant(plant) }
+                                VStack(alignment: .trailing, spacing: 8) {
+                                    if activePlantID == plant.id {
+                                        Text("Active")
+                                            .foregroundStyle(.secondary)
+                                        Button("Sell") { onSellPlant(plant) }
+                                            .disabled(true)
+                                    } else {
+                                        Button("Set Active") { onSetActivePlant(plant) }
+                                        Button("Sell +\(plant.purchasePrice)") { onSellPlant(plant) }
+                                    }
                                 }
                             } else {
                                 Button("Buy \(plant.purchasePrice)") { onBuyPlant(plant) }
@@ -62,8 +70,11 @@ struct ShopView: View {
                             }
                             Spacer()
                             if item.isOwned {
-                                Text("Owned")
-                                    .foregroundStyle(.secondary)
+                                VStack(alignment: .trailing, spacing: 8) {
+                                    Text("Owned")
+                                        .foregroundStyle(.secondary)
+                                    Button("Sell +\(item.price)") { onSellDecor(item) }
+                                }
                             } else {
                                 Button("Buy") { onBuyDecor(item) }
                             }
