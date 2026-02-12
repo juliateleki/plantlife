@@ -10,10 +10,47 @@ import SwiftUI
 struct RoomView: View {
     let plantName: String
     let plantRate: Double
+    let plantLevel: Int
+    let plantID: String
 
     let room: RoomState
     let items: [DecorItem]
     let onTogglePlace: (DecorItem) -> Void
+
+    // MARK: - Plant Visual Mapping
+
+    private func plantEmoji(for id: String, level: Int) -> String {
+        switch id {
+        case "plant_pothos":
+            switch level {
+            case 1...3: return "🌱"
+            case 4...7: return "🪴"
+            case 8...14: return "🌿"
+            default: return "🌳"
+            }
+
+        case "plant_monstera":
+            switch level {
+            case 1...3: return "🌱"
+            case 4...7: return "🌿"
+            case 8...14: return "🌴"
+            default: return "🌳"
+            }
+
+        case "plant_snake":
+            switch level {
+            case 1...3: return "🌱"
+            case 4...7: return "🌾"
+            case 8...14: return "🌵"
+            default: return "🌳"
+            }
+
+        default:
+            return "🪴"
+        }
+    }
+
+    // MARK: - Decor Emoji Mapping
 
     private func emoji(for itemID: String) -> String {
         switch itemID {
@@ -41,8 +78,13 @@ struct RoomView: View {
                     .frame(height: 260)
 
                 VStack(spacing: 10) {
-                    Text("🪴 \(plantName)")
-                        .font(.title2)
+
+                    // Plant visual evolves automatically by level
+                    Text(plantEmoji(for: plantID, level: plantLevel))
+                        .font(.system(size: 64))
+
+                    Text("\(plantName)")
+                        .font(.title3)
 
                     Text("\(plantRate, specifier: "%.1f") coins / min")
                         .font(.subheadline)
