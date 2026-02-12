@@ -19,19 +19,29 @@ struct ContentView: View {
     @StateObject private var gameStore = GameStore()
     @State private var isShopOpen = false
 
+    private func resolveActivePlant(player: PlayerState?, plants: [Plant]) -> Plant? {
+        guard !plants.isEmpty else { return nil }
+
+        // Prefer the player's currentPlantID if it points to an owned plant
+        if let player,
+           let id = player.currentPlantID,
+           let match = plants.first(where: { $0.id == id && $0.isOwned }) {
+            return match
+        }
+
+        // Otherwise use first owned plant
+        if let owned = plants.first(where: { $0.isOwned }) {
+            return owned
+        }
+
+        // Fallback
+        return plants.first
+    }
+
     var body: some View {
         let player = players.first
         let room = rooms.first
-
-        // Active plant is derived from player.currentPlantID
-        let activePlant: Plant? = {
-            guard let player else { return plants.first }
-            if let id = player.currentPlantID,
-               let match = plants.first(where: { $0.id == id && $0.isOwned }) {
-                return match
-            }
-            return plants.first(where: { $0.isOwned }) ?? plants.first
-        }()
+        let activePlant = resolveActivePlant(player: player, plants: plants)
 
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -74,6 +84,8 @@ struct ContentView: View {
                 RoomView(
                     plantName: plant.name,
                     plantRate: plant.coinsPerMinute,
+                    plantLevel: plant.level,
+                    plantID: plant.id,
                     room: room,
                     items: items,
                     onTogglePlace: { item in
