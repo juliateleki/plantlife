@@ -17,7 +17,8 @@ final class GameStore: ObservableObject {
     private var ctx: ModelContext?
 
     // Safety cap so a bad timestamp can't generate absurd amounts of coins.
-    private let maxOfflineSeconds: TimeInterval = 7 * 24 * 60 * 60
+  private let maxOfflineSeconds: TimeInterval = 24 * 60 * 60
+
 
     func start(modelContext: ModelContext) {
         ctx = modelContext

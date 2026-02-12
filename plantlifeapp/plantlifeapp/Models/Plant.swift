@@ -55,8 +55,8 @@ final class Plant {
     }
 
     var coinsPerMinute: Double {
-        let exponent = Double(max(0, level - 1))
-        return baseCoinsPerMinute * pow(rateGrowth, exponent)
+        let lvl = Double(max(1, level))
+        return baseCoinsPerMinute * pow(lvl, 1.25)
     }
 
     var growthStageLabel: String {
@@ -72,14 +72,20 @@ final class Plant {
         lastGrowthAt.addingTimeInterval(growthSecondsPerLevel)
     }
 
-    func applyAutoGrowth(now: Date) -> Int {
-        guard now > lastGrowthAt else { return 0 }
-        let elapsed = now.timeIntervalSince(lastGrowthAt)
-        if elapsed < growthSecondsPerLevel { return 0 }
+  func applyAutoGrowth(now: Date) -> Int {
+      guard now > lastGrowthAt else { return 0 }
 
-        let levels = Int(elapsed / growthSecondsPerLevel)
-        level += levels
-        lastGrowthAt = lastGrowthAt.addingTimeInterval(Double(levels) * growthSecondsPerLevel)
-        return levels
-    }
+      let elapsed = now.timeIntervalSince(lastGrowthAt)
+      if elapsed < growthSecondsPerLevel { return 0 }
+
+      let rawLevels = Int(elapsed / growthSecondsPerLevel)
+
+      // Prevent huge jumps due to bad timestamps or long absences
+      let levels = min(rawLevels, 20)
+
+      level += levels
+      lastGrowthAt = lastGrowthAt.addingTimeInterval(Double(levels) * growthSecondsPerLevel)
+      return levels
+  }
+
 }
