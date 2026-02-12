@@ -1,5 +1,5 @@
 //
-//  Untitled.swift
+//  PlayerState.swift
 //  plantlifeapp
 //
 //  Created by Julia Teleki on 1/5/26.
@@ -15,9 +15,13 @@ final class PlayerState {
     var coinBank: Double      // NEW: holds fractional coins
     var lastActiveAt: Date
 
-    init(coins: Int = 0, coinBank: Double = 0, lastActiveAt: Date = .now) {
+    // Which plant is currently active
+    var currentPlantID: String?
+
+    init(coins: Int = 0, coinBank: Double = 0, lastActiveAt: Date = .now, currentPlantID: String? = nil) {
         self.coins = coins
         self.coinBank = coinBank
         self.lastActiveAt = lastActiveAt
+        self.currentPlantID = currentPlantID
     }
 }

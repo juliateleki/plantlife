@@ -18,12 +18,20 @@ struct ContentView: View {
 
     @StateObject private var gameStore = GameStore()
     @State private var isShopOpen = false
-    @State private var upgradeErrorText: String?
 
     var body: some View {
         let player = players.first
-        let plant = plants.first
         let room = rooms.first
+
+        // Active plant is derived from player.currentPlantID
+        let activePlant: Plant? = {
+            guard let player else { return plants.first }
+            if let id = player.currentPlantID,
+               let match = plants.first(where: { $0.id == id && $0.isOwned }) {
+                return match
+            }
+            return plants.first(where: { $0.isOwned }) ?? plants.first
+        }()
 
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -42,7 +50,7 @@ struct ContentView: View {
                     .font(.headline)
             }
 
-            if let plant {
+            if let plant = activePlant {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Plant: \(plant.name)")
                         .font(.headline)
@@ -53,26 +61,16 @@ struct ContentView: View {
                     Text("\(plant.coinsPerMinute, specifier: "%.1f") coins / min")
                         .foregroundStyle(.secondary)
 
-                    HStack {
-                        let cost = plant.nextUpgradeCost
-                        Button("Upgrade (\(cost) coins)") {
-                            let ok = gameStore.upgradePlant(modelContext: modelContext)
-                            upgradeErrorText = ok ? nil : "Not enough coins to upgrade."
-                        }
-                        .buttonStyle(.borderedProminent)
-
-                        if let upgradeErrorText {
-                            Text(upgradeErrorText)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    Text("Grows automatically every \(Int(plant.growthSecondsPerLevel))s")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
                 .padding()
                 .background(.thinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             }
 
-            if let plant, let room {
+            if let plant = activePlant, let room {
                 RoomView(
                     plantName: plant.name,
                     plantRate: plant.coinsPerMinute,
@@ -93,8 +91,16 @@ struct ContentView: View {
         .sheet(isPresented: $isShopOpen) {
             ShopView(
                 items: items,
-                onBuy: { item in
+                plants: plants,
+                activePlantID: player?.currentPlantID,
+                onBuyDecor: { item in
                     _ = gameStore.buy(item: item, modelContext: modelContext)
+                },
+                onBuyPlant: { plant in
+                    _ = gameStore.buyPlant(plant: plant, modelContext: modelContext)
+                },
+                onSetActivePlant: { plant in
+                    gameStore.setActivePlant(plant: plant, modelContext: modelContext)
                 }
             )
         }

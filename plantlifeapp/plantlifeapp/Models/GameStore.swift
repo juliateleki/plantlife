@@ -18,7 +18,7 @@ final class GameStore: ObservableObject {
 
     func start(modelContext: ModelContext) {
         ctx = modelContext
-        applyOfflineEarnings(now: .now)
+        applyOfflineProgress(now: .now)
 
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
@@ -39,8 +39,12 @@ final class GameStore: ObservableObject {
     func tick(now: Date = .now) {
         guard let modelContext = ctx,
               let player = fetchPlayer(modelContext),
-              let plant = fetchPlant(modelContext) else { return }
+              let plant = fetchActivePlant(modelContext, player: player) else { return }
 
+        // Auto growth while running
+        _ = plant.applyAutoGrowth(now: now)
+
+        // Earn coins
         let coinsPerSecond = plant.coinsPerMinute / 60.0
         player.coinBank += coinsPerSecond
 
@@ -54,16 +58,40 @@ final class GameStore: ObservableObject {
         try? modelContext.save()
     }
 
-    func applyOfflineEarnings(now: Date = .now) {
+    func applyOfflineProgress(now: Date = .now) {
         guard let modelContext = ctx,
               let player = fetchPlayer(modelContext),
-              let plant = fetchPlant(modelContext) else { return }
+              let plant = fetchActivePlant(modelContext, player: player) else { return }
 
-        let elapsed = now.timeIntervalSince(player.lastActiveAt)
-        if elapsed <= 0 { return }
+        let start = player.lastActiveAt
+        if now <= start { return }
 
-        let coinsPerSecond = plant.coinsPerMinute / 60.0
-        player.coinBank += elapsed * coinsPerSecond
+        // Ensure growth baseline is not ahead of time
+        if plant.lastGrowthAt > now {
+            plant.lastGrowthAt = start
+        }
+
+        // Simulate earnings in segments so that if the plant levels up during the offline window,
+        // later segments use the higher coinsPerMinute.
+        var t = start
+        while t < now {
+            let nextGrowth = plant.lastGrowthAt.addingTimeInterval(plant.growthSecondsPerLevel)
+            let segmentEnd = min(now, nextGrowth)
+
+            let dt = segmentEnd.timeIntervalSince(t)
+            if dt > 0 {
+                let cps = plant.coinsPerMinute / 60.0
+                player.coinBank += dt * cps
+            }
+
+            if segmentEnd >= nextGrowth && nextGrowth <= now {
+                plant.level += 1
+                plant.lastGrowthAt = nextGrowth
+            }
+
+            t = segmentEnd
+            if dt == 0 { break }
+        }
 
         let whole = Int(player.coinBank)
         if whole > 0 {
@@ -104,21 +132,30 @@ final class GameStore: ObservableObject {
         try? modelContext.save()
     }
 
-    // New: Plant upgrade
-    func upgradePlant(modelContext: ModelContext) -> Bool {
+    func buyPlant(plant: Plant, modelContext: ModelContext) -> Bool {
         ctx = modelContext
+        guard let player = fetchPlayer(modelContext) else { return false }
+        guard !plant.isOwned else { return true }
+        guard player.coins >= plant.purchasePrice else { return false }
 
-        guard let player = fetchPlayer(modelContext),
-              let plant = fetchPlant(modelContext) else { return false }
+        player.coins -= plant.purchasePrice
+        plant.isOwned = true
 
-        let cost = plant.nextUpgradeCost
-        guard player.coins >= cost else { return false }
-
-        player.coins -= cost
-        plant.level += 1
+        if player.currentPlantID == nil {
+            player.currentPlantID = plant.id
+        }
 
         try? modelContext.save()
         return true
+    }
+
+    func setActivePlant(plant: Plant, modelContext: ModelContext) {
+        ctx = modelContext
+        guard let player = fetchPlayer(modelContext) else { return }
+        guard plant.isOwned else { return }
+
+        player.currentPlantID = plant.id
+        try? modelContext.save()
     }
 
     private func updateLastActive(now: Date = .now) {
@@ -132,7 +169,25 @@ final class GameStore: ObservableObject {
         (try? modelContext.fetch(FetchDescriptor<PlayerState>()))?.first
     }
 
-    private func fetchPlant(_ modelContext: ModelContext) -> Plant? {
-        (try? modelContext.fetch(FetchDescriptor<Plant>()))?.first
+    private func fetchActivePlant(_ modelContext: ModelContext, player: PlayerState) -> Plant? {
+        let all = (try? modelContext.fetch(FetchDescriptor<Plant>())) ?? []
+        if all.isEmpty { return nil }
+
+        if let id = player.currentPlantID,
+           let match = all.first(where: { $0.id == id && $0.isOwned }) {
+            return match
+        }
+
+        if let firstOwned = all.first(where: { $0.isOwned }) {
+            if player.currentPlantID != firstOwned.id {
+                player.currentPlantID = firstOwned.id
+                try? modelContext.save()
+            }
+            return firstOwned
+        }
+
+        // If nothing is owned, fall back to first plant.
+        // This should not happen if seeding is correct.
+        return all.first
     }
 }

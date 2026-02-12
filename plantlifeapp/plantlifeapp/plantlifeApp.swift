@@ -23,7 +23,7 @@ struct PlantlifeApp: App {
             ])
 
             // Bump store name whenever the SwiftData schema changes.
-            let config = ModelConfiguration("Plantlife_v5", schema: schema, isStoredInMemoryOnly: false)
+            let config = ModelConfiguration("Plantlife_v6", schema: schema, isStoredInMemoryOnly: false)
 
             container = try ModelContainer(for: schema, configurations: [config])
 
@@ -52,18 +52,96 @@ private func seedWorldIfNeeded(container: ModelContainer) {
         let roomCount = try context.fetch(FetchDescriptor<RoomState>()).count
         let itemCount = try context.fetch(FetchDescriptor<DecorItem>()).count
 
+        // Player
         if playerCount == 0 {
-            context.insert(PlayerState(coins: 0, coinBank: 0, lastActiveAt: .now))
+            // Start with Pothos as the active plant
+            context.insert(
+                PlayerState(
+                    coins: 0,
+                    coinBank: 0,
+                    lastActiveAt: .now,
+                    currentPlantID: "plant_pothos"
+                )
+            )
+        } else {
+            // Ensure currentPlantID is set if missing
+            if let player = (try? context.fetch(FetchDescriptor<PlayerState>()))?.first,
+               player.currentPlantID == nil {
+                player.currentPlantID = "plant_pothos"
+            }
         }
 
+        // Plants
         if plantCount == 0 {
-            context.insert(Plant(name: "Pothos", baseCoinsPerMinute: 6))
+            // Owned starter plant
+            context.insert(
+                Plant(
+                    id: "plant_pothos",
+                    name: "Pothos",
+                    isOwned: true,
+                    purchasePrice: 0,
+                    level: 1,
+                    baseCoinsPerMinute: 6,
+                    rateGrowth: 1.15,
+                    growthSecondsPerLevel: 120,
+                    lastGrowthAt: .now
+                )
+            )
+
+            // Shop plants
+            context.insert(
+                Plant(
+                    id: "plant_monstera",
+                    name: "Monstera",
+                    isOwned: false,
+                    purchasePrice: 30,
+                    level: 1,
+                    baseCoinsPerMinute: 10,
+                    rateGrowth: 1.15,
+                    growthSecondsPerLevel: 120,
+                    lastGrowthAt: .now
+                )
+            )
+
+            context.insert(
+                Plant(
+                    id: "plant_snake",
+                    name: "Snake Plant",
+                    isOwned: false,
+                    purchasePrice: 20,
+                    level: 1,
+                    baseCoinsPerMinute: 8,
+                    rateGrowth: 1.15,
+                    growthSecondsPerLevel: 120,
+                    lastGrowthAt: .now
+                )
+            )
+        } else {
+            // Make sure the starter plant exists and is owned (defensive, in case of earlier seeds)
+            let plants = (try? context.fetch(FetchDescriptor<Plant>())) ?? []
+            if !plants.contains(where: { $0.id == "plant_pothos" }) {
+                context.insert(
+                    Plant(
+                        id: "plant_pothos",
+                        name: "Pothos",
+                        isOwned: true,
+                        purchasePrice: 0,
+                        level: 1,
+                        baseCoinsPerMinute: 6,
+                        rateGrowth: 1.15,
+                        growthSecondsPerLevel: 120,
+                        lastGrowthAt: .now
+                    )
+                )
+            }
         }
 
+        // Room
         if roomCount == 0 {
             context.insert(RoomState(roomType: .living))
         }
 
+        // Decor shop items
         if itemCount == 0 {
             context.insert(DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living))
             context.insert(DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living))
