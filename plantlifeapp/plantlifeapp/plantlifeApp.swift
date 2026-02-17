@@ -75,46 +75,47 @@ private func seedWorldIfNeeded(container: ModelContainer) {
         if plantCount == 0 {
             // Owned starter plant
             context.insert(
-                Plant(
-                    id: "plant_pothos",
-                    name: "Pothos",
-                    isOwned: true,
-                    purchasePrice: 0,
-                    level: 1,
-                    baseCoinsPerMinute: 6,
-                    rateGrowth: 1.15,
-                    growthSecondsPerLevel: 120,
-                    lastGrowthAt: .now
-                )
+              Plant(
+                  id: "plant_pothos",
+                  name: "Pothos",
+                  isOwned: true,
+                  purchasePrice: 0,
+                  level: 1,
+                  baseCoinsPerMinute: 0.10,
+                  rateGrowth: 1.0,
+                  growthSecondsPerLevel: 900,
+                  lastGrowthAt: .now
+              )
+
             )
 
             // Shop plants
             context.insert(
-                Plant(
-                    id: "plant_monstera",
-                    name: "Monstera",
-                    isOwned: false,
-                    purchasePrice: 30,
-                    level: 1,
-                    baseCoinsPerMinute: 10,
-                    rateGrowth: 1.15,
-                    growthSecondsPerLevel: 120,
-                    lastGrowthAt: .now
-                )
+              Plant(
+                  id: "plant_monstera",
+                  name: "Monstera",
+                  isOwned: false,
+                  purchasePrice: 30,
+                  level: 1,
+                  baseCoinsPerMinute: 0.20,
+                  rateGrowth: 1.0,
+                  growthSecondsPerLevel: 900,
+                  lastGrowthAt: .now
+              )
             )
 
             context.insert(
-                Plant(
-                    id: "plant_snake",
-                    name: "Snake Plant",
-                    isOwned: false,
-                    purchasePrice: 20,
-                    level: 1,
-                    baseCoinsPerMinute: 8,
-                    rateGrowth: 1.15,
-                    growthSecondsPerLevel: 120,
-                    lastGrowthAt: .now
-                )
+              Plant(
+                  id: "plant_snake",
+                  name: "Snake Plant",
+                  isOwned: false,
+                  purchasePrice: 20,
+                  level: 1,
+                  baseCoinsPerMinute: 0.15,
+                  rateGrowth: 1.0,
+                  growthSecondsPerLevel: 900,
+                  lastGrowthAt: .now
+              )
             )
         } else {
             // Make sure the starter plant exists and is owned (defensive, in case of earlier seeds)

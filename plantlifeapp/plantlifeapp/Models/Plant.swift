@@ -56,9 +56,14 @@ final class Plant {
 
     var coinsPerMinute: Double {
         let lvl = Double(max(1, level))
-        let raw = baseCoinsPerMinute * pow(lvl, 1.10)   // gentle growth
-        return min(raw, 250)                            // hard cap to keep it sane
+
+        // Very gentle scaling
+        let raw = baseCoinsPerMinute * pow(lvl, 1.05)
+
+        // Hard cap to keep gameplay slow and readable
+        return min(raw, 12.0)
     }
+
 
     var growthStageLabel: String {
         switch level {
