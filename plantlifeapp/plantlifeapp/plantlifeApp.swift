@@ -23,7 +23,7 @@ struct PlantlifeApp: App {
             ])
 
             // Bump store name whenever the SwiftData schema changes.
-            let config = ModelConfiguration("Plantlife_v6", schema: schema, isStoredInMemoryOnly: false)
+            let config = ModelConfiguration("Plantlife_v7", schema: schema, isStoredInMemoryOnly: false)
 
             container = try ModelContainer(for: schema, configurations: [config])
 
@@ -54,7 +54,6 @@ private func seedWorldIfNeeded(container: ModelContainer) {
 
         // Player
         if playerCount == 0 {
-            // Start with Pothos as the active plant
             context.insert(
                 PlayerState(
                     coins: 0,
@@ -64,76 +63,78 @@ private func seedWorldIfNeeded(container: ModelContainer) {
                 )
             )
         } else {
-            // Ensure currentPlantID is set if missing
             if let player = (try? context.fetch(FetchDescriptor<PlayerState>()))?.first,
                player.currentPlantID == nil {
                 player.currentPlantID = "plant_pothos"
             }
         }
 
-        // Plants
+        // Plants (seed only if empty)
         if plantCount == 0 {
-            // Owned starter plant
             context.insert(
-              Plant(
-                  id: "plant_pothos",
-                  name: "Pothos",
-                  isOwned: true,
-                  purchasePrice: 0,
-                  level: 1,
-                  baseCoinsPerMinute: 0.10,
-                  rateGrowth: 1.0,
-                  growthSecondsPerLevel: 900,
-                  lastGrowthAt: .now
-              )
-
-            )
-
-            // Shop plants
-            context.insert(
-              Plant(
-                  id: "plant_monstera",
-                  name: "Monstera",
-                  isOwned: false,
-                  purchasePrice: 30,
-                  level: 1,
-                  baseCoinsPerMinute: 0.20,
-                  rateGrowth: 1.0,
-                  growthSecondsPerLevel: 900,
-                  lastGrowthAt: .now
-              )
+                Plant(
+                    id: "plant_pothos",
+                    name: "Pothos",
+                    isOwned: true,
+                    purchasePrice: 0,
+                    level: 1,
+                    baseCoinsPerMinute: 0.10,
+                    rateGrowth: 1.0,
+                    growthSecondsPerLevel: 900,
+                    lastGrowthAt: .now
+                )
             )
 
             context.insert(
-              Plant(
-                  id: "plant_snake",
-                  name: "Snake Plant",
-                  isOwned: false,
-                  purchasePrice: 20,
-                  level: 1,
-                  baseCoinsPerMinute: 0.15,
-                  rateGrowth: 1.0,
-                  growthSecondsPerLevel: 900,
-                  lastGrowthAt: .now
-              )
+                Plant(
+                    id: "plant_monstera",
+                    name: "Monstera",
+                    isOwned: false,
+                    purchasePrice: 30,
+                    level: 1,
+                    baseCoinsPerMinute: 0.05,
+                    rateGrowth: 1.0,
+                    growthSecondsPerLevel: 900,
+                    lastGrowthAt: .now
+                )
+            )
+
+            context.insert(
+                Plant(
+                    id: "plant_snake",
+                    name: "Snake Plant",
+                    isOwned: false,
+                    purchasePrice: 20,
+                    level: 1,
+                    baseCoinsPerMinute: 0.05,
+                    rateGrowth: 1.0,
+                    growthSecondsPerLevel: 900,
+                    lastGrowthAt: .now
+                )
             )
         } else {
-            // Make sure the starter plant exists and is owned (defensive, in case of earlier seeds)
+            // Economy balancing migration for existing saves
+            // This is intentionally aggressive to slow things down while tuning.
             let plants = (try? context.fetch(FetchDescriptor<Plant>())) ?? []
-            if !plants.contains(where: { $0.id == "plant_pothos" }) {
-                context.insert(
-                    Plant(
-                        id: "plant_pothos",
-                        name: "Pothos",
-                        isOwned: true,
-                        purchasePrice: 0,
-                        level: 1,
-                        baseCoinsPerMinute: 6,
-                        rateGrowth: 1.15,
-                        growthSecondsPerLevel: 120,
-                        lastGrowthAt: .now
-                    )
-                )
+
+            for plant in plants {
+                if plant.id == "plant_pothos" {
+                    plant.baseCoinsPerMinute = 0.10
+                    plant.growthSecondsPerLevel = 900
+                } else if plant.id == "plant_snake" || plant.id == "plant_monstera" {
+                    plant.baseCoinsPerMinute = 0.05
+                    plant.growthSecondsPerLevel = 900
+                }
+
+                // Clamp absurd levels from earlier runs so pacing is sane again
+                if plant.level > 25 {
+                    plant.level = 25
+                }
+
+                // Ensure lastGrowthAt is not weird
+                if plant.lastGrowthAt > .now {
+                    plant.lastGrowthAt = .now
+                }
             }
         }
 
