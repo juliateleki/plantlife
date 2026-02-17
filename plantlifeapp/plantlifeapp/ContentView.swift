@@ -25,7 +25,7 @@ struct ContentView: View {
 
         let ownedPlants = plants.filter { $0.isOwned }
 
-        let activePlant: Plant? = {
+        let selectedPlant: Plant? = {
             guard let player else { return ownedPlants.first }
             if let id = player.currentPlantID,
                let match = ownedPlants.first(where: { $0.id == id }) {
@@ -62,7 +62,7 @@ struct ContentView: View {
                             ForEach(ownedPlants) { plant in
                                 PlantCard(
                                     plant: plant,
-                                    isActive: plant.id == activePlant?.id
+                                    isSelected: plant.id == selectedPlant?.id
                                 ) {
                                     gameStore.setActivePlant(
                                         plant: plant,
@@ -75,27 +75,7 @@ struct ContentView: View {
                 }
             }
 
-            if let plant = activePlant {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Active Plant: \(plant.name)")
-                        .font(.headline)
-
-                    Text("Level \(plant.level) • \(plant.growthStageLabel)")
-                        .foregroundStyle(.secondary)
-
-                    Text("\(plant.coinsPerMinute, specifier: "%.2f") coins / min")
-                        .foregroundStyle(.secondary)
-
-                    Text("Grows automatically every \(Int(plant.growthSecondsPerLevel))s")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding()
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-            }
-
-            if let plant = activePlant, let room {
+            if let plant = selectedPlant, let room {
                 RoomView(
                     plantName: plant.name,
                     plantRate: plant.coinsPerMinute,
@@ -152,7 +132,7 @@ struct ContentView: View {
 
 private struct PlantCard: View {
     let plant: Plant
-    let isActive: Bool
+    let isSelected: Bool
     let onTap: () -> Void
 
     var body: some View {
@@ -175,7 +155,7 @@ private struct PlantCard: View {
         .background(.thinMaterial)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isActive ? .green : .clear, lineWidth: 2)
+                .stroke(isSelected ? .green : .clear, lineWidth: 2)
         )
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .onTapGesture { onTap() }
