@@ -19,28 +19,23 @@ struct ContentView: View {
     @StateObject private var gameStore = GameStore()
     @State private var isShopOpen = false
 
-    private func resolveActivePlant(player: PlayerState?, plants: [Plant]) -> Plant? {
-        guard !plants.isEmpty else { return nil }
-
-        if let player,
-           let id = player.currentPlantID,
-           let match = plants.first(where: { $0.id == id && $0.isOwned }) {
-            return match
-        }
-
-        if let owned = plants.first(where: { $0.isOwned }) {
-            return owned
-        }
-
-        return plants.first
-    }
-
     var body: some View {
         let player = players.first
         let room = rooms.first
-        let activePlant = resolveActivePlant(player: player, plants: plants)
+
+        let ownedPlants = plants.filter { $0.isOwned }
+
+        let activePlant: Plant? = {
+            guard let player else { return ownedPlants.first }
+            if let id = player.currentPlantID,
+               let match = ownedPlants.first(where: { $0.id == id }) {
+                return match
+            }
+            return ownedPlants.first
+        }()
 
         VStack(alignment: .leading, spacing: 16) {
+
             HStack {
                 Text("🌱 PlantLife")
                     .font(.title2).bold()
@@ -57,15 +52,38 @@ struct ContentView: View {
                     .font(.headline)
             }
 
+            if !ownedPlants.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your Plants")
+                        .font(.headline)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(ownedPlants) { plant in
+                                PlantCard(
+                                    plant: plant,
+                                    isActive: plant.id == activePlant?.id
+                                ) {
+                                    gameStore.setActivePlant(
+                                        plant: plant,
+                                        modelContext: modelContext
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             if let plant = activePlant {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Plant: \(plant.name)")
+                    Text("Active Plant: \(plant.name)")
                         .font(.headline)
 
                     Text("Level \(plant.level) • \(plant.growthStageLabel)")
                         .foregroundStyle(.secondary)
 
-                    Text("\(plant.coinsPerMinute, specifier: "%.1f") coins / min")
+                    Text("\(plant.coinsPerMinute, specifier: "%.2f") coins / min")
                         .foregroundStyle(.secondary)
 
                     Text("Grows automatically every \(Int(plant.growthSecondsPerLevel))s")
@@ -86,7 +104,11 @@ struct ContentView: View {
                     room: room,
                     items: items,
                     onTogglePlace: { item in
-                        gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
+                        gameStore.togglePlace(
+                            item: item,
+                            in: room,
+                            modelContext: modelContext
+                        )
                     }
                 )
             } else {
@@ -124,6 +146,47 @@ struct ContentView: View {
         }
         .onDisappear {
             gameStore.stop(modelContext: modelContext)
+        }
+    }
+}
+
+private struct PlantCard: View {
+    let plant: Plant
+    let isActive: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(emojiForStage(plant.growthStageLabel))
+                .font(.system(size: 34))
+
+            Text(plant.name)
+                .font(.caption)
+                .bold()
+                .lineLimit(1)
+
+            Text("Lvl \(plant.level)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: 110)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .background(.thinMaterial)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(isActive ? .green : .clear, lineWidth: 2)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture { onTap() }
+    }
+
+    private func emojiForStage(_ stage: String) -> String {
+        switch stage {
+        case "Sprout": return "🌱"
+        case "Baby": return "🪴"
+        case "Growing": return "🌿"
+        default: return "🌳"
         }
     }
 }
