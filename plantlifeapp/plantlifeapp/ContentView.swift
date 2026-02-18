@@ -8,6 +8,24 @@
 import SwiftUI
 import SwiftData
 
+private func abbreviated(_ value: Int) -> String {
+    let num = Double(value)
+    let thousand = 1_000.0
+    let million = 1_000_000.0
+    let billion = 1_000_000_000.0
+
+    switch num {
+    case 0..<thousand:
+        return String(Int(num))
+    case thousand..<million:
+        return String(format: "%.1fK", num / thousand)
+    case million..<billion:
+        return String(format: "%.1fM", num / million)
+    default:
+        return String(format: "%.1fB", num / billion)
+    }
+}
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
 
@@ -45,7 +63,7 @@ struct ContentView: View {
                 Spacer()
 
                 if let player {
-                    Text("🪙 \(player.coins)")
+                    Text("🪙 \(abbreviated(player.coins))")
                         .font(.headline)
                 }
 
@@ -188,3 +206,28 @@ private struct PlantCard: View {
         }
     }
 }
+
+#Preview("ContentView – Preview data") {
+    let schema = Schema([
+        PlayerState.self,
+        Plant.self,
+        DecorItem.self,
+        RoomState.self,
+    ])
+    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: schema, configurations: [config])
+    let context = ModelContext(container)
+    let player = PlayerState(coins: 10234, coinBank: 0, lastActiveAt: .now, currentPlantID: "plant_pothos")
+    let room = RoomState(roomType: .living)
+    let pothos = Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 5, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
+    let snake = Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 3, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
+    context.insert(player)
+    context.insert(room)
+    context.insert(pothos)
+    context.insert(snake)
+    try! context.save()
+
+    return ContentView()
+        .modelContainer(container)
+}
+

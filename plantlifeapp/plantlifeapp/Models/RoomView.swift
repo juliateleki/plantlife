@@ -101,3 +101,23 @@ struct RoomView: View {
     }
 }
 
+#Preview("Room – Multiple plants") {
+    let room = RoomState(roomType: .living)
+    let plants: [Plant] = [
+        Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 6, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
+        Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 2, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
+        Plant(id: "plant_monstera", name: "Monstera", isOwned: true, purchasePrice: 30, level: 8, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
+    ]
+    let items: [DecorItem] = [
+        DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, isOwned: true),
+        DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, isOwned: false),
+    ]
+    return RoomView(
+        plants: plants,
+        room: room,
+        items: items,
+        onTogglePlace: { _ in }
+    )
+    .padding()
+}
+

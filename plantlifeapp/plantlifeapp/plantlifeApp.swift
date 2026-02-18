@@ -27,8 +27,6 @@ struct PlantlifeApp: App {
 
             container = try ModelContainer(for: schema, configurations: [config])
 
-            seedWorldIfNeeded(container: container)
-
         } catch {
             fatalError("❌ Failed to create ModelContainer: \(error)")
         }
@@ -37,6 +35,9 @@ struct PlantlifeApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .task {
+                    seedWorldIfNeeded(container: container)
+                }
         }
         .modelContainer(container)
     }
