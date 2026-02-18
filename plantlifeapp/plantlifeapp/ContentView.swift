@@ -45,7 +45,7 @@ struct ContentView: View {
                 Spacer()
 
                 if let player {
-                    Text("Coins: \(player.coins)")
+                    Text("🪙 \(player.coins)")
                         .font(.headline)
                 }
 
