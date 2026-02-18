@@ -18,7 +18,6 @@ struct ShopView: View {
 
     let onBuyPlant: (Plant) -> Void
     let onSellPlant: (Plant) -> Void
-    let onSetActivePlant: (Plant) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
@@ -42,15 +41,9 @@ struct ShopView: View {
 
                             if plant.isOwned {
                                 VStack(alignment: .trailing, spacing: 8) {
-                                    if activePlantID == plant.id {
-                                        Text("Active")
-                                            .foregroundStyle(.secondary)
-                                        Button("Sell") { onSellPlant(plant) }
-                                            .disabled(true)
-                                    } else {
-                                        Button("Set Active") { onSetActivePlant(plant) }
-                                        Button("Sell +\(plant.purchasePrice)") { onSellPlant(plant) }
-                                    }
+                                    Text("Owned")
+                                        .foregroundStyle(.secondary)
+                                    Button("Sell +\(plant.purchasePrice)") { onSellPlant(plant) }
                                 }
                             } else {
                                 Button("Buy \(plant.purchasePrice)") { onBuyPlant(plant) }
@@ -91,3 +84,27 @@ struct ShopView: View {
         }
     }
 }
+#Preview("Shop – All items and plants") {
+    let plants: [Plant] = [
+        Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 3, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
+        Plant(id: "plant_snake", name: "Snake Plant", isOwned: false, purchasePrice: 20, level: 1, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
+        Plant(id: "plant_monstera", name: "Monstera", isOwned: true, purchasePrice: 30, level: 5, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
+    ]
+
+    let items: [DecorItem] = [
+        DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, isOwned: true),
+        DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, isOwned: false),
+        DecorItem(id: "couch_01", name: "Cozy Couch", price: 25, roomType: .living, isOwned: false)
+    ]
+
+    return ShopView(
+        items: items,
+        plants: plants,
+        activePlantID: "plant_pothos",
+        onBuyDecor: { _ in },
+        onSellDecor: { _ in },
+        onBuyPlant: { _ in },
+        onSellPlant: { _ in }
+    )
+}
+

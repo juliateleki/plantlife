@@ -115,9 +115,6 @@ struct ContentView: View {
                 },
                 onSellPlant: { plant in
                     _ = gameStore.sellPlant(plant: plant, modelContext: modelContext)
-                },
-                onSetActivePlant: { plant in
-                    gameStore.setActivePlant(plant: plant, modelContext: modelContext)
                 }
             )
         }
