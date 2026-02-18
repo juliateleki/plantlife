@@ -44,16 +44,20 @@ struct ContentView: View {
 
                 Spacer()
 
-                Menu("Menu") {
+                if let player {
+                    Text("Coins: \(player.coins)")
+                        .font(.headline)
+                }
+
+                Menu {
                     Button("Your Plants") { isPlantsMenuOpen = true }
                     Button("Your Furniture") { isFurnitureMenuOpen = true }
                     Button("Shop") { isShopOpen = true }
+                } label: {
+                    Image(systemName: "line.3.horizontal")
+                        .imageScale(.large)
+                        .padding(.leading, 8)
                 }
-            }
-
-            if let player {
-                Text("Coins: \(player.coins)")
-                    .font(.headline)
             }
 
             if let plant = selectedPlant, let room {

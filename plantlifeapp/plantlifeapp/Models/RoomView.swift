@@ -97,31 +97,6 @@ struct RoomView: View {
                         .foregroundStyle(room.placedItemIDs.isEmpty ? .secondary : .primary)
                 }
             }
-
-            let owned = items.filter { $0.roomType == .living }
-
-            if !owned.isEmpty {
-                Text("All furniture")
-                    .font(.headline)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(owned) { item in
-                            let isPlaced = room.placedItemIDs.contains(item.id)
-
-                            Button {
-                                onTogglePlace(item)
-                            } label: {
-                                Text(isPlaced ? "Remove \(item.name)" : "Place \(item.name)")
-                                    .padding(.vertical, 10)
-                                    .padding(.horizontal, 14)
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
