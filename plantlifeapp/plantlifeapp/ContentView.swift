@@ -18,6 +18,8 @@ struct ContentView: View {
 
     @StateObject private var gameStore = GameStore()
     @State private var isShopOpen = false
+    @State private var isPlantsMenuOpen = false
+    @State private var isFurnitureMenuOpen = false
 
     var body: some View {
         let player = players.first
@@ -42,8 +44,10 @@ struct ContentView: View {
 
                 Spacer()
 
-                Button("Shop") {
-                    isShopOpen = true
+                Menu("Menu") {
+                    Button("Your Plants") { isPlantsMenuOpen = true }
+                    Button("Your Furniture") { isFurnitureMenuOpen = true }
+                    Button("Shop") { isShopOpen = true }
                 }
             }
 
@@ -52,35 +56,9 @@ struct ContentView: View {
                     .font(.headline)
             }
 
-            if !ownedPlants.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your Plants")
-                        .font(.headline)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(ownedPlants) { plant in
-                                PlantCard(
-                                    plant: plant,
-                                    isSelected: plant.id == selectedPlant?.id
-                                ) {
-                                    gameStore.setActivePlant(
-                                        plant: plant,
-                                        modelContext: modelContext
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             if let plant = selectedPlant, let room {
                 RoomView(
-                    plantName: plant.name,
-                    plantRate: plant.coinsPerMinute,
-                    plantLevel: plant.level,
-                    plantID: plant.id,
+                    plants: ownedPlants,
                     room: room,
                     items: items,
                     onTogglePlace: { item in
@@ -120,6 +98,42 @@ struct ContentView: View {
                     gameStore.setActivePlant(plant: plant, modelContext: modelContext)
                 }
             )
+        }
+        .sheet(isPresented: $isPlantsMenuOpen) {
+            NavigationStack {
+                List {
+                    Section("Your Plants") {
+                        ForEach(plants.filter { $0.isOwned }) { plant in
+                            HStack {
+                                Text(plant.name).bold()
+                                Spacer()
+                                Text("Lvl \(plant.level)")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Your Plants")
+                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { isPlantsMenuOpen = false } } }
+            }
+        }
+        .sheet(isPresented: $isFurnitureMenuOpen) {
+            NavigationStack {
+                List {
+                    Section("Your Furniture") {
+                        ForEach(items.filter { $0.isOwned }) { item in
+                            HStack {
+                                Text(item.name).bold()
+                                Spacer()
+                                Text("Owned")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Your Furniture")
+                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { isFurnitureMenuOpen = false } } }
+            }
         }
         .onAppear {
             gameStore.start(modelContext: modelContext)

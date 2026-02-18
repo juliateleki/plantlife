@@ -6,12 +6,10 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct RoomView: View {
-    let plantName: String
-    let plantRate: Double
-    let plantLevel: Int
-    let plantID: String
+    let plants: [Plant]
 
     let room: RoomState
     let items: [DecorItem]
@@ -78,17 +76,21 @@ struct RoomView: View {
                     .frame(height: 260)
 
                 VStack(spacing: 10) {
-
-                    // Plant visual evolves automatically by level
-                    Text(plantEmoji(for: plantID, level: plantLevel))
-                        .font(.system(size: 64))
-
-                    Text("\(plantName)")
-                        .font(.title3)
-
-                    Text("\(plantRate, specifier: "%.1f") coins / min")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    // Show all plants visually
+                    let ownedPlants = plants.filter { $0.isOwned }
+                    if ownedPlants.isEmpty {
+                        Text("No plants owned yet")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        // Display emojis for all owned plants
+                        HStack(spacing: 12) {
+                            ForEach(ownedPlants) { p in
+                                Text(plantEmoji(for: p.id, level: p.level))
+                                    .font(.system(size: 40))
+                                    .accessibilityLabel(Text("\(p.name), level \(p.level)"))
+                            }
+                        }
+                    }
 
                     Text(placedSummary())
                         .padding(.top, 8)
@@ -96,10 +98,10 @@ struct RoomView: View {
                 }
             }
 
-            let owned = items.filter { $0.isOwned && $0.roomType == .living }
+            let owned = items.filter { $0.roomType == .living }
 
             if !owned.isEmpty {
-                Text("Your items")
+                Text("All furniture")
                     .font(.headline)
 
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -123,3 +125,4 @@ struct RoomView: View {
         }
     }
 }
+

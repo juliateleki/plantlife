@@ -81,9 +81,9 @@ private func seedWorldIfNeeded(container: ModelContainer) {
                     isOwned: true,
                     purchasePrice: 0,
                     level: 1,
-                    baseCoinsPerMinute: 0.5,
+                    baseCoinsPerMinute: 0.1,
                     rateGrowth: 1.0,
-                    growthSecondsPerLevel: 900,
+                    growthSecondsPerLevel: 1800,
                     lastGrowthAt: .now
                 )
             )
@@ -95,9 +95,9 @@ private func seedWorldIfNeeded(container: ModelContainer) {
                     isOwned: true,
                     purchasePrice: 20,
                     level: 1,
-                    baseCoinsPerMinute: 0.1,
+                    baseCoinsPerMinute: 0.05,
                     rateGrowth: 1.0,
-                    growthSecondsPerLevel: 900,
+                    growthSecondsPerLevel: 1800,
                     lastGrowthAt: .now
                 )
             )
@@ -109,9 +109,9 @@ private func seedWorldIfNeeded(container: ModelContainer) {
                     isOwned: true,
                     purchasePrice: 30,
                     level: 1,
-                    baseCoinsPerMinute: 0.1,
+                    baseCoinsPerMinute: 0.05,
                     rateGrowth: 1.0,
-                    growthSecondsPerLevel: 900,
+                    growthSecondsPerLevel: 1800,
                     lastGrowthAt: .now
                 )
             )
