@@ -10,6 +10,9 @@ import SwiftData
 
 @MainActor
 final class GameStore: ObservableObject {
+    // Global balance knob to slow down coin generation
+    private let coinGenerationNerf: Double = 0.25 // 25% of previous rate
+
     private var timer: Timer?
     private let tickInterval: TimeInterval = 1.0
 
@@ -49,7 +52,7 @@ final class GameStore: ObservableObject {
 
         _ = plant.applyAutoGrowth(now: now)
 
-        let coinsPerSecond = plant.coinsPerMinute / 60.0
+        let coinsPerSecond = (plant.coinsPerMinute / 60.0) * coinGenerationNerf
         if coinsPerSecond.isFinite, coinsPerSecond > 0 {
             player.coinBank += coinsPerSecond
         }
@@ -80,7 +83,7 @@ final class GameStore: ObservableObject {
 
         _ = plant.applyAutoGrowth(now: now)
 
-        let coinsPerSecond = plant.coinsPerMinute / 60.0
+        let coinsPerSecond = (plant.coinsPerMinute / 60.0) * coinGenerationNerf
         if coinsPerSecond.isFinite, coinsPerSecond > 0, elapsed > 0 {
             player.coinBank += elapsed * coinsPerSecond
         }
@@ -258,3 +261,4 @@ final class GameStore: ObservableObject {
         return all.first
     }
 }
+

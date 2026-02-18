@@ -58,7 +58,7 @@ private func seedWorldIfNeeded(container: ModelContainer) {
             // Start with Pothos as the selected plant
             context.insert(
                 PlayerState(
-                    coins: 0,
+                    coins: 100,
                     coinBank: 0,
                     lastActiveAt: .now,
                     currentPlantID: "plant_pothos"
