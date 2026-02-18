@@ -268,3 +268,44 @@ private struct PlantCard: View {
     .modelContainer(container)
 }
 
+#Preview("Your Furniture – Preview data") {
+    let schema = Schema([
+        PlayerState.self,
+        Plant.self,
+        DecorItem.self,
+        RoomState.self,
+    ])
+    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: schema, configurations: [config])
+    let context = ModelContext(container)
+    // Seed some decor items
+    let rug = DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, isOwned: true)
+    let chair = DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, isOwned: false)
+    let couch = DecorItem(id: "couch_01", name: "Cozy Couch", price: 25, roomType: .living, isOwned: true)
+
+    context.insert(rug)
+    context.insert(chair)
+    context.insert(couch)
+    try! context.save()
+
+    // Fetch items back for the list
+    let items = (try? context.fetch(FetchDescriptor<DecorItem>())) ?? []
+
+    return NavigationStack {
+        List {
+            Section("Your Furniture") {
+                ForEach(items.filter { $0.isOwned }) { item in
+                    HStack {
+                        Text(item.name).bold()
+                        Spacer()
+                        Text("Owned")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Your Furniture")
+    }
+    .modelContainer(container)
+}
+

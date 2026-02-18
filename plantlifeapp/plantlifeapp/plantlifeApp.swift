@@ -116,6 +116,34 @@ private func seedWorldIfNeeded(container: ModelContainer) {
                     lastGrowthAt: .now
                 )
             )
+
+            context.insert(
+                Plant(
+                    id: "plant_ficus",
+                    name: "Ficus",
+                    isOwned: false,
+                    purchasePrice: 45,
+                    level: 1,
+                    baseCoinsPerMinute: 0.07,
+                    rateGrowth: 1.0,
+                    growthSecondsPerLevel: 1800,
+                    lastGrowthAt: .now
+                )
+            )
+
+            context.insert(
+                Plant(
+                    id: "plant_fern",
+                    name: "Fern",
+                    isOwned: false,
+                    purchasePrice: 15,
+                    level: 1,
+                    baseCoinsPerMinute: 0.05,
+                    rateGrowth: 1.0,
+                    growthSecondsPerLevel: 1800,
+                    lastGrowthAt: .now
+                )
+            )
         }
 
         // Room
@@ -135,3 +163,4 @@ private func seedWorldIfNeeded(container: ModelContainer) {
         print("❌ Seeding failed:", error)
     }
 }
+

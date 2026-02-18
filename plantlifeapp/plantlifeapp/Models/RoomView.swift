@@ -43,6 +43,22 @@ struct RoomView: View {
             default: return "🌳"
             }
 
+        case "plant_ficus":
+            switch level {
+            case 1...3: return "🌱"
+            case 4...7: return "🌿"
+            case 8...14: return "🌴"
+            default: return "🌳"
+            }
+
+        case "plant_fern":
+            switch level {
+            case 1...3: return "🌱"
+            case 4...7: return "🌿"
+            case 8...14: return "🌾"
+            default: return "🌳"
+            }
+
         default:
             return "🪴"
         }
