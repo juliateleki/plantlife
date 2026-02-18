@@ -103,7 +103,6 @@ struct ContentView: View {
             ShopView(
                 items: items,
                 plants: plants,
-                activePlantID: player?.currentPlantID,
                 onBuyDecor: { item in
                     _ = gameStore.buy(item: item, modelContext: modelContext)
                 },
@@ -226,5 +225,46 @@ private struct PlantCard: View {
 
     return ContentView()
         .modelContainer(container)
+}
+
+#Preview("Your Plants – Preview data") {
+    let schema = Schema([
+        PlayerState.self,
+        Plant.self,
+        DecorItem.self,
+        RoomState.self,
+    ])
+    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: schema, configurations: [config])
+    let context = ModelContext(container)
+    // Seed some plants, including Monstera
+    let pothos = Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 5, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
+    let snake = Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 3, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
+    let monstera = Plant(id: "plant_monstera", name: "Monstera", isOwned: true, purchasePrice: 30, level: 8, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
+
+    context.insert(pothos)
+    context.insert(snake)
+    context.insert(monstera)
+    try! context.save()
+
+    // Pull plants back for the list
+    let plants = (try? context.fetch(FetchDescriptor<Plant>())) ?? []
+
+    return NavigationStack {
+        List {
+            Section("Your Plants") {
+                ForEach(plants.filter { $0.isOwned }) { plant in
+                    HStack {
+                        Text(plant.name).bold()
+                        Spacer()
+                        Text("Lvl \(plant.level)")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Your Plants")
+    }
+    .modelContainer(container)
 }
 

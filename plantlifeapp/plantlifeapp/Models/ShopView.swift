@@ -11,7 +11,6 @@ import SwiftData
 struct ShopView: View {
     let items: [DecorItem]
     let plants: [Plant]
-    let activePlantID: String?
 
     let onBuyDecor: (DecorItem) -> Void
     let onSellDecor: (DecorItem) -> Void
@@ -100,7 +99,6 @@ struct ShopView: View {
     return ShopView(
         items: items,
         plants: plants,
-        activePlantID: "plant_pothos",
         onBuyDecor: { _ in },
         onSellDecor: { _ in },
         onBuyPlant: { _ in },
