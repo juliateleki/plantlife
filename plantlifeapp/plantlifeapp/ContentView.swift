@@ -43,7 +43,7 @@ struct ContentView: View {
         let player = players.first
         let room = rooms.first
 
-        let ownedPlants = plants.filter { $0.isOwned }
+        let ownedPlants = plants.filter { $0.isOwned && room?.placedPlantIDs.contains($0.id) == true }
 
         let selectedPlant: Plant? = {
             guard let player else { return ownedPlants.first }
@@ -129,13 +129,17 @@ struct ContentView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                let isActive = players.first?.currentPlantID == plant.id
-                                if isActive {
-                                    Text("Placed")
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Button("Place") {
-                                        gameStore.setActivePlant(plant: plant, modelContext: modelContext)
+                                if let room = rooms.first {
+                                    let isPlaced = room.isPlantPlaced(plant.id)
+                                    Button(isPlaced ? "Remove" : "Place") {
+                                        var placed = room.placedPlantIDs
+                                        if let idx = placed.firstIndex(of: plant.id) {
+                                            placed.remove(at: idx)
+                                        } else {
+                                            placed.append(plant.id)
+                                        }
+                                        room.placedPlantIDs = placed
+                                        try? modelContext.save()
                                     }
                                     .buttonStyle(.bordered)
                                 }

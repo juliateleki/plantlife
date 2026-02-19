@@ -93,7 +93,7 @@ struct RoomView: View {
 
                 VStack(spacing: 10) {
                     // Show all plants visually
-                    let ownedPlants = plants.filter { $0.isOwned }
+                    let ownedPlants = plants.filter { $0.isOwned && room.placedPlantIDs.contains($0.id) }
                     if ownedPlants.isEmpty {
                         Text("No plants owned yet")
                             .foregroundStyle(.secondary)
@@ -119,6 +119,7 @@ struct RoomView: View {
 
 #Preview("Room – Multiple plants") {
     let room = RoomState(roomType: .living)
+    room.placedPlantIDs = ["plant_pothos", "plant_monstera"]
     let plants: [Plant] = [
         Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 6, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
         Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 2, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),

@@ -20,7 +20,7 @@ final class GameStore: ObservableObject {
     private var ctx: ModelContext?
 
     // Safety cap so a bad timestamp can't generate absurd amounts of coins.
-  private let maxOfflineSeconds: TimeInterval = 24 * 60 * 60
+    private let maxOfflineSeconds: TimeInterval = 24 * 60 * 60
 
 
     func start(modelContext: ModelContext) {
@@ -45,16 +45,28 @@ final class GameStore: ObservableObject {
 
     func tick(now: Date = .now) {
         guard let modelContext = ctx,
-              let player = fetchPlayer(modelContext),
-              let plant = fetchActivePlant(modelContext, player: player) else { return }
+              let player = fetchPlayer(modelContext) else { return }
 
         clampPlayerCoinsIfNeeded(player)
 
-        _ = plant.applyAutoGrowth(now: now)
+        // Fetch room and plants
+        let rooms = (try? modelContext.fetch(FetchDescriptor<RoomState>())) ?? []
+        let room = rooms.first
+        let allPlants = (try? modelContext.fetch(FetchDescriptor<Plant>())) ?? []
 
-        let coinsPerSecond = (plant.coinsPerMinute / 60.0) * coinGenerationNerf
-        if coinsPerSecond.isFinite, coinsPerSecond > 0 {
-            player.coinBank += coinsPerSecond
+        // Determine placed plants by ID
+        let placedIDs = room?.placedPlantIDs ?? []
+        let placedPlants = allPlants.filter { $0.isOwned && placedIDs.contains($0.id) }
+
+        var totalCoinsPerSecond: Double = 0
+        for plant in placedPlants {
+            _ = plant.applyAutoGrowth(now: now)
+            totalCoinsPerSecond += (plant.coinsPerMinute / 60.0)
+        }
+        totalCoinsPerSecond *= coinGenerationNerf
+
+        if totalCoinsPerSecond.isFinite, totalCoinsPerSecond > 0 {
+            player.coinBank += totalCoinsPerSecond
         }
 
         cashOutCoinBankSafely(player: player)
@@ -65,8 +77,7 @@ final class GameStore: ObservableObject {
 
     func applyOfflineProgress(now: Date = .now) {
         guard let modelContext = ctx,
-              let player = fetchPlayer(modelContext),
-              let plant = fetchActivePlant(modelContext, player: player) else { return }
+              let player = fetchPlayer(modelContext) else { return }
 
         clampPlayerCoinsIfNeeded(player)
 
@@ -74,18 +85,26 @@ final class GameStore: ObservableObject {
         guard now > start else { return }
 
         var elapsed = now.timeIntervalSince(start)
-        if elapsed > maxOfflineSeconds {
-            elapsed = maxOfflineSeconds
-        }
-        if !elapsed.isFinite || elapsed < 0 {
-            elapsed = 0
-        }
+        if elapsed > maxOfflineSeconds { elapsed = maxOfflineSeconds }
+        if !elapsed.isFinite || elapsed < 0 { elapsed = 0 }
 
-        _ = plant.applyAutoGrowth(now: now)
+        // Fetch room and plants
+        let rooms = (try? modelContext.fetch(FetchDescriptor<RoomState>())) ?? []
+        let room = rooms.first
+        let allPlants = (try? modelContext.fetch(FetchDescriptor<Plant>())) ?? []
 
-        let coinsPerSecond = (plant.coinsPerMinute / 60.0) * coinGenerationNerf
-        if coinsPerSecond.isFinite, coinsPerSecond > 0, elapsed > 0 {
-            player.coinBank += elapsed * coinsPerSecond
+        let placedIDs = room?.placedPlantIDs ?? []
+        let placedPlants = allPlants.filter { $0.isOwned && placedIDs.contains($0.id) }
+
+        var totalCoinsPerSecond: Double = 0
+        for plant in placedPlants {
+            _ = plant.applyAutoGrowth(now: now)
+            totalCoinsPerSecond += (plant.coinsPerMinute / 60.0)
+        }
+        totalCoinsPerSecond *= coinGenerationNerf
+
+        if totalCoinsPerSecond.isFinite, totalCoinsPerSecond > 0, elapsed > 0 {
+            player.coinBank += elapsed * totalCoinsPerSecond
         }
 
         cashOutCoinBankSafely(player: player)
@@ -197,10 +216,6 @@ final class GameStore: ObservableObject {
         player.coins -= plant.purchasePrice
         plant.isOwned = true
 
-        if player.currentPlantID == nil {
-            player.currentPlantID = plant.id
-        }
-
         try? modelContext.save()
         return true
     }
@@ -210,24 +225,11 @@ final class GameStore: ObservableObject {
         guard let player = fetchPlayer(modelContext) else { return false }
         guard plant.isOwned else { return false }
 
-        if player.currentPlantID == plant.id {
-            return false
-        }
-
         plant.isOwned = false
         addCoinsClamped(plant.purchasePrice, to: player)
 
         try? modelContext.save()
         return true
-    }
-
-    func setActivePlant(plant: Plant, modelContext: ModelContext) {
-        ctx = modelContext
-        guard let player = fetchPlayer(modelContext) else { return }
-        guard plant.isOwned else { return }
-
-        player.currentPlantID = plant.id
-        try? modelContext.save()
     }
 
     private func updateLastActive(now: Date = .now) {
@@ -239,26 +241,6 @@ final class GameStore: ObservableObject {
 
     private func fetchPlayer(_ modelContext: ModelContext) -> PlayerState? {
         (try? modelContext.fetch(FetchDescriptor<PlayerState>()))?.first
-    }
-
-    private func fetchActivePlant(_ modelContext: ModelContext, player: PlayerState) -> Plant? {
-        let all = (try? modelContext.fetch(FetchDescriptor<Plant>())) ?? []
-        if all.isEmpty { return nil }
-
-        if let id = player.currentPlantID,
-           let match = all.first(where: { $0.id == id && $0.isOwned }) {
-            return match
-        }
-
-        if let firstOwned = all.first(where: { $0.isOwned }) {
-            if player.currentPlantID != firstOwned.id {
-                player.currentPlantID = firstOwned.id
-                try? modelContext.save()
-            }
-            return firstOwned
-        }
-
-        return all.first
     }
 }
 

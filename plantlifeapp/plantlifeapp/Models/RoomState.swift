@@ -16,9 +16,13 @@ final class RoomState {
     // This avoids @Attribute(.transformable) ambiguity issues with [String].
     var placedItemIDsJSON: Data
 
-    init(roomType: RoomType, placedItemIDs: [String] = []) {
+    // Persist placed plant IDs as JSON Data similar to decor.
+    var placedPlantIDsJSON: Data
+
+    init(roomType: RoomType, placedItemIDs: [String] = [], placedPlantIDs: [String] = []) {
         self.roomTypeRaw = roomType.rawValue
         self.placedItemIDsJSON = (try? JSONEncoder().encode(placedItemIDs)) ?? Data()
+        self.placedPlantIDsJSON = (try? JSONEncoder().encode(placedPlantIDs)) ?? Data()
     }
 
     var roomType: RoomType {
@@ -37,7 +41,20 @@ final class RoomState {
         }
     }
 
+    var placedPlantIDs: [String] {
+        get {
+            (try? JSONDecoder().decode([String].self, from: placedPlantIDsJSON)) ?? []
+        }
+        set {
+            placedPlantIDsJSON = (try? JSONEncoder().encode(newValue)) ?? Data()
+        }
+    }
+
     func isPlaced(_ itemID: String) -> Bool {
         placedItemIDs.contains(itemID)
+    }
+
+    func isPlantPlaced(_ plantID: String) -> Bool {
+        placedPlantIDs.contains(plantID)
     }
 }
