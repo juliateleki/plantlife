@@ -107,6 +107,8 @@ struct ContentView: View {
                     _ = gameStore.sellPlant(plant: plant, modelContext: modelContext)
                 }
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isPlantsMenuOpen) {
             NavigationStack {
