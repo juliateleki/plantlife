@@ -16,12 +16,10 @@ final class PlayerState {
     var lastActiveAt: Date
 
     // Which plant is currently active
-    var currentPlantID: String?
 
-    init(coins: Int = 0, coinBank: Double = 0, lastActiveAt: Date = .now, currentPlantID: String? = nil) {
+    init(coins: Int = 0, coinBank: Double = 0, lastActiveAt: Date = .now) {
         self.coins = coins
         self.coinBank = coinBank
         self.lastActiveAt = lastActiveAt
-        self.currentPlantID = currentPlantID
     }
 }

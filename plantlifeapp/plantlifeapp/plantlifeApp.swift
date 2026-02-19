@@ -23,7 +23,7 @@ struct PlantlifeApp: App {
             ])
 
             // Bump store name whenever the SwiftData schema changes.
-            let config = ModelConfiguration("Plantlife_v8", schema: schema, isStoredInMemoryOnly: false)
+            let config = ModelConfiguration("Plantlife_v9", schema: schema, isStoredInMemoryOnly: false)
 
             container = try ModelContainer(for: schema, configurations: [config])
 
@@ -60,16 +60,9 @@ private func seedWorldIfNeeded(container: ModelContainer) {
                 PlayerState(
                     coins: 100,
                     coinBank: 0,
-                    lastActiveAt: .now,
-                    currentPlantID: "plant_pothos"
+                    lastActiveAt: .now
                 )
             )
-        } else {
-            // Ensure currentPlantID is set if missing
-            if let player = (try? context.fetch(FetchDescriptor<PlayerState>()))?.first,
-               player.currentPlantID == nil {
-                player.currentPlantID = "plant_pothos"
-            }
         }
 
         // Plants

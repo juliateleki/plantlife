@@ -45,15 +45,6 @@ struct ContentView: View {
 
         let ownedPlants = plants.filter { $0.isOwned && room?.placedPlantIDs.contains($0.id) == true }
 
-        let selectedPlant: Plant? = {
-            guard let player else { return ownedPlants.first }
-            if let id = player.currentPlantID,
-               let match = ownedPlants.first(where: { $0.id == id }) {
-                return match
-            }
-            return ownedPlants.first
-        }()
-
         VStack(alignment: .leading, spacing: 16) {
 
             HStack {
@@ -78,7 +69,7 @@ struct ContentView: View {
                 }
             }
 
-            if let plant = selectedPlant, let room {
+            if let room {
                 RoomView(
                     plants: ownedPlants,
                     room: room,
@@ -125,8 +116,19 @@ struct ContentView: View {
                             HStack {
                                 VStack(alignment: .leading) {
                                     Text(plant.name).bold()
-                                    Text("Lvl \(plant.level)")
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 8) {
+                                        Text("Lvl \(plant.level)")
+                                            .foregroundStyle(.secondary)
+                                        if let room = rooms.first, room.isPlantPlaced(plant.id) {
+                                            Text("Placed")
+                                                .font(.caption)
+                                                .foregroundStyle(.green)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Color.green.opacity(0.15))
+                                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                        }
+                                    }
                                 }
                                 Spacer()
                                 if let room = rooms.first {
@@ -148,7 +150,36 @@ struct ContentView: View {
                     }
                 }
                 .navigationTitle("Your Plants")
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { isPlantsMenuOpen = false } } }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        if let room = rooms.first {
+                            Button("Place All") {
+                                let owned = plants.filter { $0.isOwned }.map { $0.id }
+                                var placed = room.placedPlantIDs
+                                for id in owned {
+                                    if !placed.contains(id) { placed.append(id) }
+                                }
+                                room.placedPlantIDs = placed
+                                try? modelContext.save()
+                            }
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { isPlantsMenuOpen = false }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        if let room = rooms.first {
+                            Button("Remove All") {
+                                var placed = room.placedPlantIDs
+                                placed.removeAll(where: { id in
+                                    plants.contains(where: { $0.id == id && $0.isOwned })
+                                })
+                                room.placedPlantIDs = placed
+                                try? modelContext.save()
+                            }
+                        }
+                    }
+                }
             }
         }
         .sheet(isPresented: $isFurnitureMenuOpen) {
@@ -246,7 +277,7 @@ private struct PlantCard: View {
     let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: schema, configurations: [config])
     let context = ModelContext(container)
-    let player = PlayerState(coins: 10234, coinBank: 0, lastActiveAt: .now, currentPlantID: "plant_pothos")
+    let player = PlayerState(coins: 10234, coinBank: 0, lastActiveAt: .now)
     let room = RoomState(roomType: .living)
     let pothos = Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 5, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
     let snake = Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 3, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
