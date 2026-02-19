@@ -141,10 +141,27 @@ struct ContentView: View {
                     Section("Your Furniture") {
                         ForEach(items.filter { $0.isOwned }) { item in
                             HStack {
-                                Text(item.name).bold()
+                                VStack(alignment: .leading) {
+                                    Text(item.name).bold()
+                                    if let room = rooms.first {
+                                        let isPlaced = room.isPlaced(item.id)
+                                        Text(isPlaced ? "Placed" : "Owned")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        Text("Owned")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
                                 Spacer()
-                                Text("Owned")
-                                    .foregroundStyle(.secondary)
+                                if let room = rooms.first {
+                                    let isPlaced = room.isPlaced(item.id)
+                                    Button(isPlaced ? "Remove" : "Place") {
+                                        gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
                             }
                         }
                     }
