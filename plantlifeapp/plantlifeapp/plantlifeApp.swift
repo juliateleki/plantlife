@@ -14,21 +14,42 @@ struct PlantlifeApp: App {
     let container: ModelContainer
 
     init() {
+        func makeStoreName() -> String {
+            #if DEBUG
+            // Auto-bump store name in debug to avoid migration churn during development.
+            // Format: Plantlife_YYYYMMDD_HHMMSS_build<build>
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd_HHmmss"
+            let stamp = formatter.string(from: Date())
+            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
+            return "Plantlife_\(stamp)_build\(build)"
+            #else
+            // Stable name for release builds
+            return "Plantlife"
+            #endif
+        }
+
+        let schema = Schema([
+            PlayerState.self,
+            Plant.self,
+            DecorItem.self,
+            RoomState.self,
+        ])
+
         do {
-            let schema = Schema([
-                PlayerState.self,
-                Plant.self,
-                DecorItem.self,
-                RoomState.self,
-            ])
-
-            // Bump store name whenever the SwiftData schema changes.
-            let config = ModelConfiguration("Plantlife_v9", schema: schema, isStoredInMemoryOnly: false)
-
+            let storeName = makeStoreName()
+            let config = ModelConfiguration(storeName, schema: schema, isStoredInMemoryOnly: false)
             container = try ModelContainer(for: schema, configurations: [config])
-
         } catch {
-            fatalError("❌ Failed to create ModelContainer: \(error)")
+            print("❌ Primary ModelContainer creation failed: \(error). Retrying with fresh store name...")
+            do {
+                let fallbackName = "Plantlife_\(UUID().uuidString)"
+                let fallbackConfig = ModelConfiguration(fallbackName, schema: schema, isStoredInMemoryOnly: false)
+                container = try ModelContainer(for: schema, configurations: [fallbackConfig])
+                print("✅ Fallback ModelContainer created with store name: \(fallbackName)")
+            } catch let fallbackError {
+                fatalError("❌ Failed to create ModelContainer on fallback as well: \(fallbackError)")
+            }
         }
     }
 
