@@ -123,10 +123,22 @@ struct ContentView: View {
                     Section("Your Plants") {
                         ForEach(plants.filter { $0.isOwned }) { plant in
                             HStack {
-                                Text(plant.name).bold()
+                                VStack(alignment: .leading) {
+                                    Text(plant.name).bold()
+                                    Text("Lvl \(plant.level)")
+                                        .foregroundStyle(.secondary)
+                                }
                                 Spacer()
-                                Text("Lvl \(plant.level)")
-                                    .foregroundStyle(.secondary)
+                                let isActive = players.first?.currentPlantID == plant.id
+                                if isActive {
+                                    Text("Placed")
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Button("Place") {
+                                        gameStore.setActivePlant(plant: plant, modelContext: modelContext)
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
                             }
                         }
                     }
