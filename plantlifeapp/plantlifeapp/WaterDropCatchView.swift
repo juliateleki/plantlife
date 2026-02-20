@@ -79,7 +79,7 @@ struct WaterDropCatchView: View {
                             spawnDrop()
                         }
                     }
-                    .onChange(of: geo.size) { newSize in
+                    .onChange(of: geo.size) { _, newSize in
                         gameSize = newSize
                     }
                 }
