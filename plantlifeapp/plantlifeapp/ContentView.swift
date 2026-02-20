@@ -35,9 +35,6 @@ struct ContentView: View {
     @Query private var items: [DecorItem]
 
     @StateObject private var gameStore = GameStore()
-    @State private var isShopOpen = false
-    @State private var isPlantsMenuOpen = false
-    @State private var isFurnitureMenuOpen = false
 
     var body: some View {
         let player = players.first
@@ -59,9 +56,26 @@ struct ContentView: View {
                 }
 
                 Menu {
-                    Button("Your Plants") { isPlantsMenuOpen = true }
-                    Button("Your Furniture") { isFurnitureMenuOpen = true }
-                    Button("Shop") { isShopOpen = true }
+                    NavigationLink("Your Plants") { PlantsListView() }
+                    NavigationLink("Your Furniture") { FurnitureListView() }
+                    NavigationLink("Shop") {
+                        ShopView(
+                            items: items,
+                            plants: plants,
+                            onBuyDecor: { item in
+                                _ = gameStore.buy(item: item, modelContext: modelContext)
+                            },
+                            onSellDecor: { item in
+                                _ = gameStore.sellDecor(item: item, modelContext: modelContext)
+                            },
+                            onBuyPlant: { plant in
+                                _ = gameStore.buyPlant(plant: plant, modelContext: modelContext)
+                            },
+                            onSellPlant: { plant in
+                                _ = gameStore.sellPlant(plant: plant, modelContext: modelContext)
+                            }
+                        )
+                    }
                     NavigationLink("Games") { MinigamesDemoLauncher() }
                 } label: {
                     Image(systemName: "line.3.horizontal")
@@ -91,135 +105,6 @@ struct ContentView: View {
             Spacer()
         }
         .padding()
-        .sheet(isPresented: $isShopOpen) {
-            ShopView(
-                items: items,
-                plants: plants,
-                onBuyDecor: { item in
-                    _ = gameStore.buy(item: item, modelContext: modelContext)
-                },
-                onSellDecor: { item in
-                    _ = gameStore.sellDecor(item: item, modelContext: modelContext)
-                },
-                onBuyPlant: { plant in
-                    _ = gameStore.buyPlant(plant: plant, modelContext: modelContext)
-                },
-                onSellPlant: { plant in
-                    _ = gameStore.sellPlant(plant: plant, modelContext: modelContext)
-                }
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-        }
-        .sheet(isPresented: $isPlantsMenuOpen) {
-            NavigationStack {
-                List {
-                    Section("Your Plants") {
-                        ForEach(plants.filter { $0.isOwned }) { plant in
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(plant.name).bold()
-                                    HStack(spacing: 8) {
-                                        Text("Lvl \(plant.level)")
-                                            .foregroundStyle(.secondary)
-                                        if let room = rooms.first, room.isPlantPlaced(plant.id) {
-                                            Text("Placed")
-                                                .font(.caption)
-                                                .foregroundStyle(.green)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(Color.green.opacity(0.15))
-                                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                                        }
-                                    }
-                                }
-                                Spacer()
-                                if let room = rooms.first {
-                                    let isPlaced = room.isPlantPlaced(plant.id)
-                                    Button(isPlaced ? "Remove" : "Place") {
-                                        var placed = room.placedPlantIDs
-                                        if let idx = placed.firstIndex(of: plant.id) {
-                                            placed.remove(at: idx)
-                                        } else {
-                                            placed.append(plant.id)
-                                        }
-                                        room.placedPlantIDs = placed
-                                        try? modelContext.save()
-                                    }
-                                    .buttonStyle(.bordered)
-                                }
-                            }
-                        }
-                    }
-                }
-                .navigationTitle("Your Plants")
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        if let room = rooms.first {
-                            Button("Place All") {
-                                let owned = plants.filter { $0.isOwned }.map { $0.id }
-                                var placed = room.placedPlantIDs
-                                for id in owned {
-                                    if !placed.contains(id) { placed.append(id) }
-                                }
-                                room.placedPlantIDs = placed
-                                try? modelContext.save()
-                            }
-                        }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") { isPlantsMenuOpen = false }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        if let room = rooms.first {
-                            Button("Remove All") {
-                                var placed = room.placedPlantIDs
-                                placed.removeAll(where: { id in
-                                    plants.contains(where: { $0.id == id && $0.isOwned })
-                                })
-                                room.placedPlantIDs = placed
-                                try? modelContext.save()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .sheet(isPresented: $isFurnitureMenuOpen) {
-            NavigationStack {
-                List {
-                    Section("Your Furniture") {
-                        ForEach(items.filter { $0.isOwned }) { item in
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(item.name).bold()
-                                    if let room = rooms.first {
-                                        let isPlaced = room.isPlaced(item.id)
-                                        Text(isPlaced ? "Placed" : "Owned")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    } else {
-                                        Text("Owned")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                                Spacer()
-                                if let room = rooms.first {
-                                    let isPlaced = room.isPlaced(item.id)
-                                    Button(isPlaced ? "Remove" : "Place") {
-                                        gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
-                                    }
-                                    .buttonStyle(.bordered)
-                                }
-                            }
-                        }
-                    }
-                }
-                .navigationTitle("Your Furniture")
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { isFurnitureMenuOpen = false } } }
-            }
-        }
         .onAppear {
             gameStore.start(modelContext: modelContext)
         }
