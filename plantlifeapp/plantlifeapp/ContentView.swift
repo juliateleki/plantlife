@@ -38,6 +38,7 @@ struct ContentView: View {
     @State private var isShopOpen = false
     @State private var isPlantsMenuOpen = false
     @State private var isFurnitureMenuOpen = false
+    @State private var isGamesMenuOpen = false
 
     var body: some View {
         let player = players.first
@@ -62,6 +63,7 @@ struct ContentView: View {
                     Button("Your Plants") { isPlantsMenuOpen = true }
                     Button("Your Furniture") { isFurnitureMenuOpen = true }
                     Button("Shop") { isShopOpen = true }
+                    Button("Games") { isGamesMenuOpen = true }
                 } label: {
                     Image(systemName: "line.3.horizontal")
                         .imageScale(.large)
@@ -218,6 +220,11 @@ struct ContentView: View {
                 .navigationTitle("Your Furniture")
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { isFurnitureMenuOpen = false } } }
             }
+        }
+        .sheet(isPresented: $isGamesMenuOpen) {
+            MinigamesDemoLauncher()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .onAppear {
             gameStore.start(modelContext: modelContext)
