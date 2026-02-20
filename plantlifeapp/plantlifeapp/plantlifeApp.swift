@@ -55,10 +55,12 @@ struct PlantlifeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .task {
-                    seedWorldIfNeeded(container: container)
-                }
+            NavigationStack {
+                ContentView()
+                    .task {
+                        seedWorldIfNeeded(container: container)
+                    }
+            }
         }
         .modelContainer(container)
     }

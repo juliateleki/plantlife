@@ -14,6 +14,8 @@ struct WaterDropCatchView: View {
     private let catcherHeight: CGFloat = 30
     private let catcherYInset: CGFloat = 40 // distance from bottom
 
+    private let maxActiveDrops = 30
+
     // Droplets
     struct Drop: Identifiable, Equatable {
         let id = UUID()
@@ -29,7 +31,11 @@ struct WaterDropCatchView: View {
     @State private var timeRemaining: TimeInterval = 20 // seconds per round
     @State private var isRunning: Bool = true
     @State private var spawnAccumulator: TimeInterval = 0
-    private let spawnInterval: TimeInterval = 0.7
+    // Removed fixed spawnInterval constant
+
+    // Round progression & miss limit
+    @State private var roundIndex: Int = 0
+    @State private var missLimit: Int = 3
 
     // Scoring
     @State private var caughtCount: Int = 0
@@ -45,16 +51,14 @@ struct WaterDropCatchView: View {
                 header
                 GeometryReader { geo in
                     ZStack {
-                        // Drops
-                        ForEach(drops) { drop in
-                            Circle()
-                                .fill(Color.cyan)
-                                .frame(width: 16, height: 16)
-                                .position(positionFor(drop: drop, in: geo.size))
-                                .shadow(color: .cyan.opacity(0.5), radius: 3, x: 0, y: 2)
+                        Canvas { ctx, size in
+                            for drop in drops {
+                                let pt = positionFor(drop: drop, in: size)
+                                let rect = CGRect(x: pt.x - 8, y: pt.y - 8, width: 16, height: 16)
+                                ctx.fill(Path(ellipseIn: rect), with: .color(.cyan))
+                            }
                         }
 
-                        // Catcher
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color.brown)
                             .frame(width: catcherWidth, height: catcherHeight)
@@ -62,9 +66,7 @@ struct WaterDropCatchView: View {
                             .gesture(
                                 DragGesture(minimumDistance: 0)
                                     .onChanged { value in
-                                        // Convert drag to x in view space
                                         let localX = value.location.x
-                                        // Centered coordinate
                                         catcherX = localX - geo.size.width / 2
                                     }
                             )
@@ -73,35 +75,46 @@ struct WaterDropCatchView: View {
                     .onAppear {
                         gameSize = geo.size
                         catcherX = 0
-                        lastUpdate = Date()
+                        if gameSize.width > 0 && drops.isEmpty {
+                            spawnDrop()
+                        }
                     }
                     .onChange(of: geo.size) { newSize in
                         gameSize = newSize
                     }
                 }
-                .frame(maxHeight: 400)
+                .frame(maxHeight: .infinity)
 
                 footer
             }
             .padding()
-            .animation(.easeInOut(duration: 0.15), value: caughtCount)
 
             if let coins = rewardCoins {
                 resultOverlay(coins: coins)
             }
         }
-        .onReceive(Timer.publish(every: 1/60, on: .main, in: .common).autoconnect()) { now in
-            guard isRunning, rewardCoins == nil else { return }
-            step(now: now)
-        }
+        .ignoresSafeArea()
         .navigationTitle("Water Drop Catch")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            lastUpdate = Date()
+        }
+        .onReceive(Timer.publish(every: 1.0/30.0, on: .main, in: .common).autoconnect()) { now in
+            if isRunning && rewardCoins == nil {
+                step(now: now)
+            }
+        }
     }
 
     private var header: some View {
         HStack {
-            Text("Time: \(Int(ceil(max(0, timeRemaining))))s")
-                .monospacedDigit()
+            VStack(alignment: .leading) {
+                Text("Time: \(Int(ceil(max(0, timeRemaining))))s")
+                    .monospacedDigit()
+                Text("Round \(roundIndex + 1) · \(difficultyLabel())")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             Text("Caught: \(caughtCount)")
             Text("Missed: \(missedCount)")
@@ -132,6 +145,11 @@ struct WaterDropCatchView: View {
             Text("Round Over")
                 .font(.title2).bold()
             Text("You caught \(caughtCount) drops!")
+            Text("Missed: \(missedCount) / \(missLimit)")
+            if missedCount == 0 {
+                Text("Flawless! +5 bonus")
+                    .foregroundStyle(.green)
+            }
             Text("+\(coins) coins")
                 .font(.title3).foregroundStyle(.yellow)
             Button("Play Again") {
@@ -161,13 +179,13 @@ struct WaterDropCatchView: View {
 
         // Spawn
         spawnAccumulator += dt
-        while spawnAccumulator >= spawnInterval {
-            spawnAccumulator -= spawnInterval
+        while spawnAccumulator >= currentSpawnInterval() {
+            spawnAccumulator -= currentSpawnInterval()
             spawnDrop()
         }
 
         // Move drops
-        let fallPerSecond: CGFloat = 0.45 // normalized per second
+        let fallPerSecond: CGFloat = currentFallPerSecond() // dynamic fall speed
         let catcherRect = catcherFrame(in: gameSize)
 
         var newDrops: [Drop] = []
@@ -187,11 +205,31 @@ struct WaterDropCatchView: View {
             }
         }
         drops = newDrops
+
+        drops.removeAll { $0.y > 1.2 }
+
+        // Check miss limit end condition
+        if missedCount >= missLimit {
+            endRound()
+            return
+        }
     }
 
     private func spawnDrop() {
         guard gameSize.width > 0 else { return }
-        let xNorm = CGFloat.random(in: -1...1)
+        if drops.count >= maxActiveDrops {
+            return
+        }
+        var xNorm = CGFloat.random(in: -1...1)
+        // Reduce initial crowding:
+        if let lastDrop = drops.last, lastDrop.y < 0.15, abs(lastDrop.x - xNorm) < 0.25 {
+            if Bool.random() {
+                xNorm += 0.4
+            } else {
+                xNorm -= 0.4
+            }
+            xNorm = min(max(xNorm, -1), 1)
+        }
         let speed = CGFloat.random(in: 0.85...1.25)
         drops.append(Drop(x: xNorm, y: 0, speed: speed, caught: false))
     }
@@ -223,14 +261,20 @@ struct WaterDropCatchView: View {
         spawnAccumulator = 0
         isRunning = true
         lastUpdate = Date()
+        rewardCoins = nil
+        // roundIndex not reset to keep progressive difficulty
     }
 
     private func endRound() {
         isRunning = false
         // Reward: small coins, scaled by performance (e.g., 1 coin per 2 catches, min 1, max 25)
-        let coins = max(1, min(25, caughtCount / 2))
+        var coins = max(1, min(25, caughtCount / 2))
+        if missedCount == 0 {
+            coins += 5 // flawless bonus
+        }
         rewardCoins = coins
         grantCoins(coins)
+        roundIndex += 1
     }
 
     private func grantCoins(_ coins: Int) {
@@ -239,6 +283,27 @@ struct WaterDropCatchView: View {
         if let player = players.first {
             player.coins += coins
             try? modelContext.save()
+        }
+    }
+
+    private func currentSpawnInterval() -> TimeInterval {
+        max(0.35, 1.2 - Double(roundIndex) * 0.15)
+    }
+
+    private func currentFallPerSecond() -> CGFloat {
+        min(0.85, 0.35 + 0.07 * CGFloat(roundIndex))
+    }
+    
+    private func difficultyLabel() -> String {
+        switch roundIndex {
+        case 0:
+            return "Easy"
+        case 1:
+            return "Normal"
+        case 2:
+            return "Hard"
+        default:
+            return "Extreme"
         }
     }
 }
