@@ -169,9 +169,18 @@ private func seedWorldIfNeeded(container: ModelContainer) {
 
         // Decor shop items
         if itemCount == 0 {
-            context.insert(DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living))
-            context.insert(DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living))
-            context.insert(DecorItem(id: "couch_01", name: "Cozy Couch", price: 25, roomType: .living))
+            // Rugs and other
+            context.insert(DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, category: .rug))
+            context.insert(DecorItem(id: "lamp_01", name: "Warm Lamp", price: 8, roomType: .living, category: .other))
+
+            // Chairs
+            context.insert(DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, category: .chair))
+            context.insert(DecorItem(id: "chair_02", name: "Modern Chair", price: 18, roomType: .living, category: .chair))
+            context.insert(DecorItem(id: "chair_03", name: "Armchair", price: 22, roomType: .living, category: .chair))
+
+            // Couches
+            context.insert(DecorItem(id: "couch_01", name: "Cozy Couch", price: 25, roomType: .living, category: .couch))
+            context.insert(DecorItem(id: "couch_02", name: "Modern Sofa", price: 35, roomType: .living, category: .couch))
         }
 
         try context.save()

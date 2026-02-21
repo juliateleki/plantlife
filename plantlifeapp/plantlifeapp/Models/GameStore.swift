@@ -197,9 +197,29 @@ final class GameStore: ObservableObject {
         guard item.isOwned else { return }
 
         var placed = room.placedItemIDs
+
+        // If already placed, remove it
         if let idx = placed.firstIndex(of: item.id) {
             placed.remove(at: idx)
         } else {
+            // Enforce only one chair and one couch in the living room
+            if item.category == .chair {
+                // Remove any other placed chair
+                placed.removeAll { placedID in
+                    if let other = try? modelContext.fetch(FetchDescriptor<DecorItem>(predicate: #Predicate { $0.id == placedID })).first {
+                        return other.category == .chair
+                    }
+                    return false
+                }
+            } else if item.category == .couch {
+                // Remove any other placed couch
+                placed.removeAll { placedID in
+                    if let other = try? modelContext.fetch(FetchDescriptor<DecorItem>(predicate: #Predicate { $0.id == placedID })).first {
+                        return other.category == .couch
+                    }
+                    return false
+                }
+            }
             placed.append(item.id)
         }
         room.placedItemIDs = placed

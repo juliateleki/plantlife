@@ -51,8 +51,8 @@ struct ShopView: View {
                     }
                 }
 
-                Section("Decor") {
-                    ForEach(items) { item in
+                Section("Chairs") {
+                    ForEach(items.filter { $0.category == .chair }) { item in
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(item.name).bold()
@@ -63,8 +63,51 @@ struct ShopView: View {
                             Spacer()
                             if item.isOwned {
                                 VStack(alignment: .trailing, spacing: 8) {
-                                    Text("Owned")
-                                        .foregroundStyle(.secondary)
+                                    Text("Owned").foregroundStyle(.secondary)
+                                    Button("Sell +\(item.price)") { onSellDecor(item) }
+                                }
+                            } else {
+                                Button("Buy") { onBuyDecor(item) }
+                            }
+                        }
+                    }
+                }
+
+                Section("Couches") {
+                    ForEach(items.filter { $0.category == .couch }) { item in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(item.name).bold()
+                                Text("Price: \(item.price)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if item.isOwned {
+                                VStack(alignment: .trailing, spacing: 8) {
+                                    Text("Owned").foregroundStyle(.secondary)
+                                    Button("Sell +\(item.price)") { onSellDecor(item) }
+                                }
+                            } else {
+                                Button("Buy") { onBuyDecor(item) }
+                            }
+                        }
+                    }
+                }
+
+                Section("Other Decor") {
+                    ForEach(items.filter { $0.category != .chair && $0.category != .couch }) { item in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(item.name).bold()
+                                Text("Price: \(item.price)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if item.isOwned {
+                                VStack(alignment: .trailing, spacing: 8) {
+                                    Text("Owned").foregroundStyle(.secondary)
                                     Button("Sell +\(item.price)") { onSellDecor(item) }
                                 }
                             } else {
