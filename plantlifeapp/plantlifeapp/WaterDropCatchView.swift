@@ -14,7 +14,7 @@ struct WaterDropCatchView: View {
     private let catcherHeight: CGFloat = 30
     private let catcherYInset: CGFloat = 40 // distance from bottom
 
-    private let maxActiveDrops = 30
+    private let maxActiveDrops = 12
 
     // Droplets
     struct Drop: Identifiable, Equatable {
@@ -52,12 +52,17 @@ struct WaterDropCatchView: View {
                 GeometryReader { geo in
                     ZStack {
                         Canvas { ctx, size in
+                            var path = Path()
                             for drop in drops {
                                 let pt = positionFor(drop: drop, in: size)
                                 let rect = CGRect(x: pt.x - 8, y: pt.y - 8, width: 16, height: 16)
-                                ctx.fill(Path(ellipseIn: rect), with: .color(.cyan))
+                                path.addEllipse(in: rect)
                             }
+                            ctx.fill(path, with: .color(.cyan))
                         }
+                        .animation(nil, value: drops)
+                        .allowsHitTesting(false)
+                        .drawingGroup()
 
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color.brown)
@@ -67,9 +72,15 @@ struct WaterDropCatchView: View {
                                 DragGesture(minimumDistance: 0)
                                     .onChanged { value in
                                         let localX = value.location.x
-                                        catcherX = localX - geo.size.width / 2
+                                        var t = Transaction()
+                                        t.disablesAnimations = true
+                                        withTransaction(t) {
+                                            catcherX = localX - geo.size.width / 2
+                                        }
                                     }
                             )
+                            .animation(nil, value: catcherX)
+                            .simultaneousGesture(LongPressGesture(minimumDuration: 0.01).onEnded { _ in })
                     }
                     .contentShape(Rectangle())
                     .onAppear {
@@ -91,15 +102,17 @@ struct WaterDropCatchView: View {
 
             if let coins = rewardCoins {
                 resultOverlay(coins: coins)
+                    .animation(nil, value: rewardCoins)
             }
         }
-        .ignoresSafeArea()
+        .highPriorityGesture(LongPressGesture(minimumDuration: 0.01).onEnded { _ in })
+        .transaction { $0.disablesAnimations = true }
         .navigationTitle("Water Drop Catch")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             lastUpdate = Date()
         }
-        .onReceive(Timer.publish(every: 1.0/30.0, on: .main, in: .common).autoconnect()) { now in
+        .onReceive(Timer.publish(every: 1.0/20.0, on: .main, in: .common).autoconnect()) { now in
             if isRunning && rewardCoins == nil {
                 step(now: now)
             }
@@ -177,10 +190,11 @@ struct WaterDropCatchView: View {
             return
         }
 
-        // Spawn
+        // Spawn (throttled to at most one per frame)
         spawnAccumulator += dt
-        while spawnAccumulator >= currentSpawnInterval() {
-            spawnAccumulator -= currentSpawnInterval()
+        let interval = currentSpawnInterval()
+        if spawnAccumulator >= interval {
+            spawnAccumulator -= interval
             spawnDrop()
         }
 
@@ -196,15 +210,27 @@ struct WaterDropCatchView: View {
                 let pos = positionFor(drop: d, in: gameSize)
                 if catcherRect.contains(pos) {
                     d.caught = true
-                    caughtCount += 1
+                    var t = Transaction()
+                    t.disablesAnimations = true
+                    withTransaction(t) {
+                        caughtCount += 1
+                    }
                 } else {
-                    missedCount += 1
+                    var t = Transaction()
+                    t.disablesAnimations = true
+                    withTransaction(t) {
+                        missedCount += 1
+                    }
                 }
             } else {
                 newDrops.append(d)
             }
         }
-        drops = newDrops
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t) {
+            drops = newDrops
+        }
 
         drops.removeAll { $0.y > 1.2 }
 
