@@ -35,6 +35,7 @@ struct ContentView: View {
     @Query private var items: [DecorItem]
 
     @StateObject private var gameStore = GameStore()
+    @State private var isShowingMenu = false
 
     var body: some View {
         let player = players.first
@@ -55,28 +56,8 @@ struct ContentView: View {
                         .font(.headline)
                 }
 
-                Menu {
-                    NavigationLink("Your Plants") { PlantsListView() }
-                    NavigationLink("Your Furniture") { FurnitureListView() }
-                    NavigationLink("Shop") {
-                        ShopView(
-                            items: items,
-                            plants: plants,
-                            onBuyDecor: { item in
-                                _ = gameStore.buy(item: item, modelContext: modelContext)
-                            },
-                            onSellDecor: { item in
-                                _ = gameStore.sellDecor(item: item, modelContext: modelContext)
-                            },
-                            onBuyPlant: { plant in
-                                _ = gameStore.buyPlant(plant: plant, modelContext: modelContext)
-                            },
-                            onSellPlant: { plant in
-                                _ = gameStore.sellPlant(plant: plant, modelContext: modelContext)
-                            }
-                        )
-                    }
-                    NavigationLink("Games") { MinigamesDemoLauncher() }
+                Button {
+                    isShowingMenu = true
                 } label: {
                     Image(systemName: "line.3.horizontal")
                         .imageScale(.large)
@@ -110,6 +91,39 @@ struct ContentView: View {
         }
         .onDisappear {
             gameStore.stop(modelContext: modelContext)
+        }
+        .sheet(isPresented: $isShowingMenu) {
+            NavigationStack {
+                List {
+                    NavigationLink("Your Plants") { PlantsListView() }
+                    NavigationLink("Your Furniture") { FurnitureListView() }
+                    NavigationLink("Shop") {
+                        ShopView(
+                            items: items,
+                            plants: plants,
+                            onBuyDecor: { item in
+                                _ = gameStore.buy(item: item, modelContext: modelContext)
+                            },
+                            onSellDecor: { item in
+                                _ = gameStore.sellDecor(item: item, modelContext: modelContext)
+                            },
+                            onBuyPlant: { plant in
+                                _ = gameStore.buyPlant(plant: plant, modelContext: modelContext)
+                            },
+                            onSellPlant: { plant in
+                                _ = gameStore.sellPlant(plant: plant, modelContext: modelContext)
+                            }
+                        )
+                    }
+                    NavigationLink("Games") { MinigamesDemoLauncher() }
+                }
+                .navigationTitle("Menu")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { isShowingMenu = false }
+                    }
+                }
+            }
         }
     }
 }
