@@ -119,12 +119,11 @@ struct RoomView: View {
 
 #Preview("Room – Multiple plants") {
     let room = RoomState(roomType: .living)
-    let plants: [Plant] = [
+    var plants: [Plant] = [
         Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 6, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
         Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 2, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
         Plant(id: "plant_monstera", name: "Monstera", isOwned: true, purchasePrice: 30, level: 8, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
     ]
-    var plants = plants
     if let idx = plants.firstIndex(where: { $0.id == "plant_pothos" }) { plants[idx].location = .bookshelf2 }
     if let idx = plants.firstIndex(where: { $0.id == "plant_monstera" }) { plants[idx].location = .hanging1 }
     let items: [DecorItem] = [
