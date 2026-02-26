@@ -187,11 +187,12 @@ private struct PlantCard: View {
     context.insert(room)
     context.insert(pothos)
     context.insert(snake)
-    try! context.save()
 
-    // Assign example locations
+    // Assign example locations before saving
     pothos.location = .bookshelf1
     snake.location = .floor
+
+    try! context.save()
 
     return ContentView()
         .modelContainer(container)

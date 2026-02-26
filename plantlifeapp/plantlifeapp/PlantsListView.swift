@@ -5,6 +5,7 @@ struct PlantsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var plants: [Plant]
     @Query private var rooms: [RoomState]
+    @StateObject private var gameStore = GameStore()
 
     var body: some View {
         List {
@@ -16,7 +17,7 @@ struct PlantsListView: View {
                             HStack(spacing: 8) {
                                 Text("Lvl \(plant.level)")
                                     .foregroundStyle(.secondary)
-                                if let room = rooms.first, room.isPlantPlaced(plant.id) {
+                                if plant.location != nil {
                                     Text("Placed")
                                         .font(.caption)
                                         .foregroundStyle(.green)
@@ -28,20 +29,19 @@ struct PlantsListView: View {
                             }
                         }
                         Spacer()
-                        if let room = rooms.first {
-                            let isPlaced = room.isPlantPlaced(plant.id)
-                            Button(isPlaced ? "Remove" : "Place") {
-                                var placed = room.placedPlantIDs
-                                if let idx = placed.firstIndex(of: plant.id) {
-                                    placed.remove(at: idx)
-                                } else {
-                                    placed.append(plant.id)
+                        let isPlaced = (plant.location != nil)
+                        Button(isPlaced ? "Remove" : "Place") {
+                            if isPlaced {
+                                _ = gameStore.removeFromLocation(plant: plant, modelContext: modelContext)
+                            } else {
+                                // Find first available location
+                                let used = Set(plants.compactMap { $0.location })
+                                if let free = PlantLocation.all.first(where: { !used.contains($0) }) {
+                                    _ = gameStore.place(plant: plant, at: free, modelContext: modelContext)
                                 }
-                                room.placedPlantIDs = placed
-                                try? modelContext.save()
                             }
-                            .buttonStyle(.bordered)
                         }
+                        .buttonStyle(.bordered)
                     }
                 }
             }
@@ -49,27 +49,20 @@ struct PlantsListView: View {
         .navigationTitle("Your Plants")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                if let room = rooms.first {
-                    Button("Place All") {
-                        let owned = plants.filter { $0.isOwned }.map { $0.id }
-                        var placed = room.placedPlantIDs
-                        for id in owned {
-                            if !placed.contains(id) { placed.append(id) }
+                Button("Place All") {
+                    var used = Set(plants.compactMap { $0.location })
+                    for plant in plants.filter({ $0.isOwned && $0.location == nil }) {
+                        if let free = PlantLocation.all.first(where: { !used.contains($0) }) {
+                            _ = gameStore.place(plant: plant, at: free, modelContext: modelContext)
+                            used.insert(free)
                         }
-                        room.placedPlantIDs = placed
-                        try? modelContext.save()
                     }
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                if let room = rooms.first {
-                    Button("Remove All") {
-                        var placed = room.placedPlantIDs
-                        placed.removeAll(where: { id in
-                            plants.contains(where: { $0.id == id && $0.isOwned })
-                        })
-                        room.placedPlantIDs = placed
-                        try? modelContext.save()
+                Button("Remove All") {
+                    for plant in plants where plant.location != nil {
+                        _ = gameStore.removeFromLocation(plant: plant, modelContext: modelContext)
                     }
                 }
             }
