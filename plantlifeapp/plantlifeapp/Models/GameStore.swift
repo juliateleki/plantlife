@@ -54,9 +54,8 @@ final class GameStore: ObservableObject {
         let room = rooms.first
         let allPlants = (try? modelContext.fetch(FetchDescriptor<Plant>())) ?? []
 
-        // Determine placed plants by ID
-        let placedIDs = room?.placedPlantIDs ?? []
-        let placedPlants = allPlants.filter { $0.isOwned && placedIDs.contains($0.id) }
+        // Determine placed plants by location (no two plants share a location)
+        let placedPlants = allPlants.filter { $0.isOwned && $0.location != nil }
 
         var totalCoinsPerSecond: Double = 0
         for plant in placedPlants {
@@ -93,8 +92,8 @@ final class GameStore: ObservableObject {
         let room = rooms.first
         let allPlants = (try? modelContext.fetch(FetchDescriptor<Plant>())) ?? []
 
-        let placedIDs = room?.placedPlantIDs ?? []
-        let placedPlants = allPlants.filter { $0.isOwned && placedIDs.contains($0.id) }
+        // Determine placed plants by location (no two plants share a location)
+        let placedPlants = allPlants.filter { $0.isOwned && $0.location != nil }
 
         var totalCoinsPerSecond: Double = 0
         for plant in placedPlants {

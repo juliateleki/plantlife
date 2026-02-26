@@ -41,7 +41,7 @@ struct ContentView: View {
         let player = players.first
         let room = rooms.first
 
-        let ownedPlants = plants.filter { $0.isOwned && room?.placedPlantIDs.contains($0.id) == true }
+        let ownedPlants = plants.filter { $0.isOwned && $0.location != nil }
 
         VStack(alignment: .leading, spacing: 16) {
 
@@ -188,6 +188,10 @@ private struct PlantCard: View {
     context.insert(pothos)
     context.insert(snake)
     try! context.save()
+
+    // Assign example locations
+    pothos.location = .bookshelf1
+    snake.location = .floor
 
     return ContentView()
         .modelContainer(container)

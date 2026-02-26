@@ -14,6 +14,12 @@ final class Plant {
     var id: String
 
     var name: String
+    
+    var locationRaw: String?
+    var location: PlantLocation? {
+        get { locationRaw.flatMap { PlantLocation(rawValue: $0) } }
+        set { locationRaw = newValue?.rawValue }
+    }
 
     // Ownership and shop price
     var isOwned: Bool

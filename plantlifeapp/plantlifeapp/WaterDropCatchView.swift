@@ -27,7 +27,8 @@ struct WaterDropCatchView: View {
     @State private var drops: [Drop] = []
 
     // Spawning & timing
-    @State private var lastUpdate: Date = Date()
+    @State private var lastTimestamp: CFTimeInterval = CACurrentMediaTime()
+    @State private var frameCount: Int = 0
     @State private var timeRemaining: TimeInterval = 20 // seconds per round
     @State private var isRunning: Bool = true
     @State private var spawnAccumulator: TimeInterval = 0
@@ -46,6 +47,7 @@ struct WaterDropCatchView: View {
         ZStack {
             LinearGradient(colors: [Color.blue.opacity(0.15), Color.green.opacity(0.15)], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
+            frameDriver.allowsHitTesting(false)
 
             VStack(spacing: 12) {
                 header
@@ -62,7 +64,6 @@ struct WaterDropCatchView: View {
                         }
                         .animation(nil, value: drops)
                         .allowsHitTesting(false)
-                        .drawingGroup()
 
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color.brown)
@@ -110,12 +111,19 @@ struct WaterDropCatchView: View {
         .navigationTitle("Water Drop Catch")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            lastUpdate = Date()
+            lastTimestamp = CACurrentMediaTime()
         }
-        .onReceive(Timer.publish(every: 1.0/20.0, on: .main, in: .common).autoconnect()) { now in
-            if isRunning && rewardCoins == nil {
-                step(now: now)
-            }
+    }
+
+    private var frameDriver: some View {
+        TimelineView(.periodic(from: .now, by: 1.0 / 60.0)) { context in
+            let _ = {
+                if isRunning && rewardCoins == nil {
+                    let ts = context.date.timeIntervalSinceReferenceDate
+                    step(timestamp: ts)
+                }
+            }()
+            return Color.clear.frame(width: 0, height: 0)
         }
     }
 
@@ -139,7 +147,7 @@ struct WaterDropCatchView: View {
         HStack(spacing: 12) {
             Button(isRunning ? "Pause" : "Resume") {
                 isRunning.toggle()
-                lastUpdate = Date()
+                lastTimestamp = CACurrentMediaTime()
             }
             .buttonStyle(.bordered)
 
@@ -177,10 +185,10 @@ struct WaterDropCatchView: View {
     }
 
     // MARK: - Game Loop
-    private func step(now: Date) {
-        let dt = now.timeIntervalSince(lastUpdate)
-        lastUpdate = now
-        guard dt > 0 else { return }
+    private func step(timestamp: CFTimeInterval) {
+        let dt = max(0, timestamp - lastTimestamp)
+        lastTimestamp = timestamp
+        if dt == 0 { return }
 
         // Countdown
         timeRemaining -= dt
@@ -203,6 +211,8 @@ struct WaterDropCatchView: View {
         let catcherRect = catcherFrame(in: gameSize)
 
         var newDrops: [Drop] = []
+        var caughtDelta = 0
+        var missedDelta = 0
         for var d in drops {
             d.y += fallPerSecond * d.speed * CGFloat(dt)
             if d.y >= 1.0 { // reached bottom
@@ -210,26 +220,20 @@ struct WaterDropCatchView: View {
                 let pos = positionFor(drop: d, in: gameSize)
                 if catcherRect.contains(pos) {
                     d.caught = true
-                    var t = Transaction()
-                    t.disablesAnimations = true
-                    withTransaction(t) {
-                        caughtCount += 1
-                    }
+                    caughtDelta += 1
                 } else {
-                    var t = Transaction()
-                    t.disablesAnimations = true
-                    withTransaction(t) {
-                        missedCount += 1
-                    }
+                    missedDelta += 1
                 }
             } else {
                 newDrops.append(d)
             }
         }
-        var t = Transaction()
-        t.disablesAnimations = true
-        withTransaction(t) {
+        var tx = Transaction()
+        tx.disablesAnimations = true
+        withTransaction(tx) {
             drops = newDrops
+            caughtCount += caughtDelta
+            missedCount += missedDelta
         }
 
         drops.removeAll { $0.y > 1.2 }
@@ -286,7 +290,8 @@ struct WaterDropCatchView: View {
         timeRemaining = 20
         spawnAccumulator = 0
         isRunning = true
-        lastUpdate = Date()
+        lastTimestamp = CACurrentMediaTime()
+        frameCount = 0
         rewardCoins = nil
         // roundIndex not reset to keep progressive difficulty
     }
