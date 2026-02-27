@@ -18,6 +18,10 @@ struct RoomView: View {
 
     @Environment(\.modelContext) private var modelContext
 
+    private var ownedPlants: [Plant] {
+        plants.filter { $0.isOwned && $0.location != nil }
+    }
+
     // MARK: - Plant Visual Mapping
 
     private func plantEmoji(for id: String, level: Int) -> String {
@@ -78,6 +82,16 @@ struct RoomView: View {
         }
     }
 
+    private func fillColor(occupied: Bool, isPicking: Bool) -> Color {
+        if occupied { return Color.gray.opacity(0.25) }
+        return Color.blue.opacity(isPicking ? 0.2 : 0.1)
+    }
+
+    private func borderColor(occupied: Bool, isPicking: Bool) -> Color {
+        if occupied { return Color.gray }
+        return isPicking ? Color.blue : Color.secondary
+    }
+
     private func placedSummary() -> String {
         let placed = room.placedItemIDs
         if placed.isEmpty { return "No decor placed yet" }
@@ -92,48 +106,50 @@ struct RoomView: View {
             if gameStore.pendingPlacement != nil {
                 Text("Tap a spot to place \(gameStore.pendingPlacement?.name ?? "plant")")
                     .font(.caption)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Color.blue)
             }
 
             ZStack {
                 RoundedRectangle(cornerRadius: 24)
-                    .fill(.thinMaterial)
+                    .fill(Color.clear)
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
                     .frame(height: 260)
 
                 VStack(spacing: 10) {
                     // Show all plants visually
-                    let ownedPlants = plants.filter { $0.isOwned && $0.location != nil }
                     if ownedPlants.isEmpty {
                         Text("No plants owned yet")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.secondary)
                     } else {
                         // Display emojis for all owned plants
                         HStack(spacing: 12) {
-                            ForEach(ownedPlants) { p in
+                            ForEach(ownedPlants, id: \.id) { p in
                                 Text(plantEmoji(for: p.id, level: p.level))
                                     .font(.system(size: 40))
-                                    .accessibilityLabel(Text("\(p.name), level \(p.level)"))
+                                    .accessibilityLabel("\(p.name), level \(p.level)")
                             }
                         }
                     }
 
                     Text(placedSummary())
                         .padding(.top, 8)
-                        .foregroundStyle(room.placedItemIDs.isEmpty ? .secondary : .primary)
+                        .foregroundStyle(room.placedItemIDs.isEmpty ? Color.secondary : Color.primary)
                 }
 
                 // Tap targets for choosing locations
                 GeometryReader { geo in
                     let boxSize = CGSize(width: 70, height: 48)
-                    ForEach(PlantLocation.all, id: \.self) { loc in
-                        let index = PlantLocation.all.firstIndex(of: loc) ?? 0
-                        let col = index % 4
-                        let row = index / 4
-                        let origin = CGPoint(x: 20 + CGFloat(col) * (boxSize.width + 8),
-                                             y: 20 + CGFloat(row) * (boxSize.height + 8))
-                        let rect = CGRect(origin: origin, size: boxSize)
+                    let locations: [PlantLocation] = Array(PlantLocation.all)
+                    ForEach(locations, id: \.self) { loc in
+                        let index: Int = locations.firstIndex(of: loc) ?? 0
+                        let col: Int = index % 4
+                        let row: Int = index / 4
+                        let origin: CGPoint = CGPoint(x: 20 + CGFloat(col) * (boxSize.width + 8),
+                                                     y: 20 + CGFloat(row) * (boxSize.height + 8))
+                        let rect: CGRect = CGRect(origin: origin, size: boxSize)
 
-                        let occupied = plants.contains { $0.location == loc }
+                        let occupied = plants.contains { $0.location == Optional(loc) }
                         let isPicking = (gameStore.pendingPlacement != nil)
 
                         Button {
@@ -145,13 +161,13 @@ struct RoomView: View {
                         } label: {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(occupied ? Color.gray.opacity(0.25) : Color.blue.opacity(isPicking ? 0.2 : 0.1))
+                                    .fill(fillColor(occupied: occupied, isPicking: isPicking))
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(occupied ? Color.gray : (isPicking ? Color.blue : Color.secondary), lineWidth: 1)
+                                    .stroke(borderColor(occupied: occupied, isPicking: isPicking), lineWidth: 1)
                                 Text(loc.title)
                                     .font(.caption2)
                                     .multilineTextAlignment(.center)
-                                    .foregroundStyle(occupied ? .secondary : .primary)
+                                    .foregroundStyle(occupied ? Color.secondary : Color.primary)
                                     .padding(4)
                             }
                         }
@@ -166,25 +182,15 @@ struct RoomView: View {
     }
 }
 
-#Preview("Room – Multiple plants") {
-    let room = RoomState(roomType: .living)
-    var plants: [Plant] = [
-        Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 6, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
-        Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 2, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
-        Plant(id: "plant_monstera", name: "Monstera", isOwned: true, purchasePrice: 30, level: 8, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now),
-    ]
-    if let idx = plants.firstIndex(where: { $0.id == "plant_pothos" }) { plants[idx].location = .bookshelf2 }
-    if let idx = plants.firstIndex(where: { $0.id == "plant_monstera" }) { plants[idx].location = .hanging1 }
-    let items: [DecorItem] = [
-        DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, isOwned: true),
-        DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, isOwned: false),
-    ]
-    RoomView(
-        plants: plants,
+#Preview("Room – Minimal") {
+    let room: RoomState = RoomState(roomType: .living)
+    let toggle: (DecorItem) -> Void = { _ in }
+    return RoomView(
+        plants: [],
         room: room,
-        items: items,
+        items: [],
         gameStore: GameStore(),
-        onTogglePlace: { _ in }
+        onTogglePlace: toggle
     )
     .padding()
 }
