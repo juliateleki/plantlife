@@ -109,8 +109,8 @@ struct RoomView: View {
             Text("Living Room")
                 .font(.title3).bold()
 
-            if gameStore.pendingPlacement != nil {
-                Text("Tap a spot to place \(gameStore.pendingPlacement?.name ?? "plant")")
+            if isPicking {
+                Text("Tap a box to place \(gameStore.pendingPlacement?.name ?? "plant")")
                     .font(.caption)
                     .foregroundStyle(Color.blue)
             }
@@ -142,6 +142,8 @@ struct RoomView: View {
                         .padding(.top, 8)
                         .foregroundStyle(room.placedItemIDs.isEmpty ? Color.secondary : Color.primary)
                 }
+                .opacity(isPicking ? 0 : 1)
+                .allowsHitTesting(!isPicking)
 
                 // Tap targets for choosing locations
                 GeometryReader { geo in
@@ -193,19 +195,15 @@ struct RoomView: View {
                     }
                 }
                 .padding()
+                .allowsHitTesting(true)
 
                 if isPicking {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Button("Cancel") {
-                                gameStore.pendingPlacement = nil
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                        Spacer()
+                    Button("Cancel") {
+                        gameStore.pendingPlacement = nil
                     }
+                    .buttonStyle(.bordered)
                     .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 }
             }
         }

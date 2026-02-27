@@ -5,7 +5,8 @@ struct PlantsListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var plants: [Plant]
     @Query private var rooms: [RoomState]
-    @StateObject private var gameStore = GameStore()
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var gameStore: GameStore
 
     var body: some View {
         List {
@@ -34,11 +35,8 @@ struct PlantsListView: View {
                             if isPlaced {
                                 _ = gameStore.removeFromLocation(plant: plant, modelContext: modelContext)
                             } else {
-                                // Find first available location
-                                let used = Set(plants.compactMap { $0.location })
-                                if let free = PlantLocation.all.first(where: { !used.contains($0) }) {
-                                    _ = gameStore.place(plant: plant, at: free, modelContext: modelContext)
-                                }
+                                gameStore.pendingPlacement = plant
+                                dismiss()
                             }
                         }
                         .buttonStyle(.bordered)
