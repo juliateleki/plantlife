@@ -18,6 +18,12 @@ struct RoomView: View {
 
     @Environment(\.modelContext) private var modelContext
 
+    private var isPicking: Bool { gameStore.pendingPlacement != nil }
+
+    private func plant(at location: PlantLocation) -> Plant? {
+        plants.first { $0.location == Optional(location) }
+    }
+
     private var ownedPlants: [Plant] {
         plants.filter { $0.isOwned && $0.location != nil }
     }
@@ -164,11 +170,21 @@ struct RoomView: View {
                                     .fill(fillColor(occupied: occupied, isPicking: isPicking))
                                 RoundedRectangle(cornerRadius: 8)
                                     .stroke(borderColor(occupied: occupied, isPicking: isPicking), lineWidth: 1)
-                                Text(loc.title)
-                                    .font(.caption2)
-                                    .multilineTextAlignment(.center)
-                                    .foregroundStyle(occupied ? Color.secondary : Color.primary)
-                                    .padding(4)
+                                if let occupant = plant(at: loc) {
+                                    Text(plantEmoji(for: occupant.id, level: occupant.level))
+                                        .font(.system(size: 28))
+                                        .transition(.scale)
+                                } else if let preview = gameStore.pendingPlacement, isPicking {
+                                    Text(plantEmoji(for: preview.id, level: preview.level))
+                                        .font(.system(size: 28))
+                                        .opacity(0.5)
+                                } else {
+                                    Text(loc.title)
+                                        .font(.caption2)
+                                        .multilineTextAlignment(.center)
+                                        .foregroundStyle(occupied ? Color.secondary : Color.primary)
+                                        .padding(4)
+                                }
                             }
                         }
                         .disabled(occupied || !isPicking)
@@ -177,6 +193,20 @@ struct RoomView: View {
                     }
                 }
                 .padding()
+
+                if isPicking {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button("Cancel") {
+                                gameStore.pendingPlacement = nil
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        Spacer()
+                    }
+                    .padding()
+                }
             }
         }
     }
