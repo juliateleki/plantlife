@@ -13,7 +13,10 @@ struct RoomView: View {
 
     let room: RoomState
     let items: [DecorItem]
+    @ObservedObject var gameStore: GameStore
     let onTogglePlace: (DecorItem) -> Void
+
+    @Environment(\.modelContext) private var modelContext
 
     // MARK: - Plant Visual Mapping
 
@@ -86,6 +89,12 @@ struct RoomView: View {
             Text("Living Room")
                 .font(.title3).bold()
 
+            if gameStore.pendingPlacement != nil {
+                Text("Tap a spot to place \(gameStore.pendingPlacement?.name ?? "plant")")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+            }
+
             ZStack {
                 RoundedRectangle(cornerRadius: 24)
                     .fill(.thinMaterial)
@@ -112,6 +121,46 @@ struct RoomView: View {
                         .padding(.top, 8)
                         .foregroundStyle(room.placedItemIDs.isEmpty ? .secondary : .primary)
                 }
+
+                // Tap targets for choosing locations
+                GeometryReader { geo in
+                    let boxSize = CGSize(width: 70, height: 48)
+                    ForEach(PlantLocation.all, id: \.self) { loc in
+                        let index = PlantLocation.all.firstIndex(of: loc) ?? 0
+                        let col = index % 4
+                        let row = index / 4
+                        let origin = CGPoint(x: 20 + CGFloat(col) * (boxSize.width + 8),
+                                             y: 20 + CGFloat(row) * (boxSize.height + 8))
+                        let rect = CGRect(origin: origin, size: boxSize)
+
+                        let occupied = plants.contains { $0.location == loc }
+                        let isPicking = (gameStore.pendingPlacement != nil)
+
+                        Button {
+                            guard let plant = gameStore.pendingPlacement else { return }
+                            if !occupied {
+                                _ = gameStore.place(plant: plant, at: loc, modelContext: modelContext)
+                                gameStore.pendingPlacement = nil
+                            }
+                        } label: {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(occupied ? Color.gray.opacity(0.25) : Color.blue.opacity(isPicking ? 0.2 : 0.1))
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(occupied ? Color.gray : (isPicking ? Color.blue : Color.secondary), lineWidth: 1)
+                                Text(loc.title)
+                                    .font(.caption2)
+                                    .multilineTextAlignment(.center)
+                                    .foregroundStyle(occupied ? .secondary : .primary)
+                                    .padding(4)
+                            }
+                        }
+                        .disabled(occupied || !isPicking)
+                        .frame(width: rect.width, height: rect.height)
+                        .position(x: rect.midX, y: rect.midY)
+                    }
+                }
+                .padding()
             }
         }
     }
@@ -130,10 +179,11 @@ struct RoomView: View {
         DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, isOwned: true),
         DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, isOwned: false),
     ]
-    return RoomView(
+    RoomView(
         plants: plants,
         room: room,
         items: items,
+        gameStore: GameStore(),
         onTogglePlace: { _ in }
     )
     .padding()

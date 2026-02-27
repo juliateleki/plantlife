@@ -22,6 +22,9 @@ final class GameStore: ObservableObject {
     // Safety cap so a bad timestamp can't generate absurd amounts of coins.
     private let maxOfflineSeconds: TimeInterval = 24 * 60 * 60
 
+    // Pending plant awaiting a location selection in the room UI
+    @Published var pendingPlacement: Plant? = nil
+
 
     func start(modelContext: ModelContext) {
         ctx = modelContext

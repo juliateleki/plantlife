@@ -70,6 +70,7 @@ struct ContentView: View {
                     plants: ownedPlants,
                     room: room,
                     items: items,
+                    gameStore: gameStore,
                     onTogglePlace: { item in
                         gameStore.togglePlace(
                             item: item,
