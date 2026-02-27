@@ -93,6 +93,11 @@ struct ContentView: View {
         .onDisappear {
             gameStore.stop(modelContext: modelContext)
         }
+        .onChange(of: gameStore.pendingPlacement) { _, newValue in
+            if newValue != nil {
+                isShowingMenu = false
+            }
+        }
         .sheet(isPresented: $isShowingMenu) {
             NavigationStack {
                 List {
