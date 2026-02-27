@@ -110,9 +110,16 @@ struct RoomView: View {
                 .font(.title3).bold()
 
             if isPicking {
-                Text("Tap a box to place \(gameStore.pendingPlacement?.name ?? "plant")")
-                    .font(.caption)
-                    .foregroundStyle(Color.blue)
+                HStack {
+                    Text("Tap a box to place \(gameStore.pendingPlacement?.name ?? "plant")")
+                        .font(.caption)
+                        .foregroundStyle(Color.blue)
+                    Spacer()
+                    Button("Cancel") {
+                        gameStore.pendingPlacement = nil
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
 
             ZStack {
@@ -196,15 +203,6 @@ struct RoomView: View {
                 }
                 .padding()
                 .allowsHitTesting(true)
-
-                if isPicking {
-                    Button("Cancel") {
-                        gameStore.pendingPlacement = nil
-                    }
-                    .buttonStyle(.bordered)
-                    .padding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                }
             }
         }
     }
