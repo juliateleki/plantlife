@@ -24,6 +24,7 @@ final class GameStore: ObservableObject {
 
     // Pending plant awaiting a location selection in the room UI
     @Published var pendingPlacement: Plant? = nil
+    @Published var pendingDecorPlacement: DecorItem? = nil
 
 
     func start(modelContext: ModelContext) {

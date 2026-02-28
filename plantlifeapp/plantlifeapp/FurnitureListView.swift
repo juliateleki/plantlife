@@ -5,8 +5,9 @@ struct FurnitureListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var items: [DecorItem]
     @Query private var rooms: [RoomState]
+    @Environment(\.dismiss) private var dismiss
 
-    @StateObject private var gameStore = GameStore()
+    @EnvironmentObject private var gameStore: GameStore
 
     var body: some View {
         List {
@@ -30,7 +31,12 @@ struct FurnitureListView: View {
                         if let room = rooms.first {
                             let isPlaced = room.isPlaced(item.id)
                             Button(isPlaced ? "Remove" : "Place") {
-                                gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
+                                if isPlaced {
+                                    gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
+                                } else {
+                                    gameStore.pendingDecorPlacement = item
+                                    dismiss()
+                                }
                             }
                             .buttonStyle(.bordered)
                         }
@@ -57,7 +63,12 @@ struct FurnitureListView: View {
                         if let room = rooms.first {
                             let isPlaced = room.isPlaced(item.id)
                             Button(isPlaced ? "Remove" : "Place") {
-                                gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
+                                if isPlaced {
+                                    gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
+                                } else {
+                                    gameStore.pendingDecorPlacement = item
+                                    dismiss()
+                                }
                             }
                             .buttonStyle(.bordered)
                         }
@@ -84,7 +95,12 @@ struct FurnitureListView: View {
                         if let room = rooms.first {
                             let isPlaced = room.isPlaced(item.id)
                             Button(isPlaced ? "Remove" : "Place") {
-                                gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
+                                if isPlaced {
+                                    gameStore.togglePlace(item: item, in: room, modelContext: modelContext)
+                                } else {
+                                    gameStore.pendingDecorPlacement = item
+                                    dismiss()
+                                }
                             }
                             .buttonStyle(.bordered)
                         }

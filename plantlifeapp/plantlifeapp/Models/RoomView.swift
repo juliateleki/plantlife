@@ -23,6 +23,10 @@ struct RoomView: View {
     private func plant(at location: PlantLocation) -> Plant? {
         plants.first { $0.location == Optional(location) }
     }
+    
+    private func isDecorPlaced(_ decorID: String) -> Bool {
+        room.placedItemIDs.contains(decorID)
+    }
 
     private var ownedPlants: [Plant] {
         plants.filter { $0.isOwned && $0.location != nil }
@@ -87,6 +91,11 @@ struct RoomView: View {
         default: return "📦"
         }
     }
+    
+    private func decorEmoji(for item: DecorItem?) -> String {
+        guard let item else { return "" }
+        return emoji(for: item.id)
+    }
 
     private func fillColor(occupied: Bool, isPicking: Bool) -> Color {
         if occupied { return Color.gray.opacity(0.25) }
@@ -109,14 +118,20 @@ struct RoomView: View {
             Text("Living Room")
                 .font(.title3).bold()
 
-            if isPicking {
+            if isPicking || gameStore.pendingDecorPlacement != nil {
                 HStack {
-                    Text("Tap a box to place \(gameStore.pendingPlacement?.name ?? "plant")")
+                    let placingText: String = {
+                        if let plant = gameStore.pendingPlacement { return "Tap a box to place \(plant.name)" }
+                        if let decor = gameStore.pendingDecorPlacement { return "Tap a box to place \(decor.name)" }
+                        return ""
+                    }()
+                    Text(placingText)
                         .font(.caption)
                         .foregroundStyle(Color.blue)
                     Spacer()
                     Button("Cancel") {
                         gameStore.pendingPlacement = nil
+                        gameStore.pendingDecorPlacement = nil
                     }
                     .buttonStyle(.bordered)
                 }
@@ -151,6 +166,14 @@ struct RoomView: View {
                 }
                 .opacity(isPicking ? 0 : 1)
                 .allowsHitTesting(!isPicking)
+
+                // Decor placement slots
+                HStack(spacing: 12) {
+                    decorSlot(title: "Chair", category: .chair)
+                    decorSlot(title: "Couch", category: .couch)
+                    decorSlot(title: "Rug", category: .rug)
+                }
+                .opacity(gameStore.pendingDecorPlacement != nil ? 1 : 1)
 
                 // Tap targets for choosing locations
                 GeometryReader { geo in
@@ -205,6 +228,55 @@ struct RoomView: View {
                 .allowsHitTesting(true)
             }
         }
+    }
+    
+    @ViewBuilder
+    private func decorSlot(title: String, category: DecorCategory) -> some View {
+        let placingDecor = gameStore.pendingDecorPlacement
+        let isPickingDecor = (placingDecor != nil)
+        let placedID = room.placedItemIDs.first { id in
+            items.first(where: { $0.id == id })?.category == category
+        }
+        let placedItem = placedID.flatMap { id in items.first(where: { $0.id == id }) }
+        let isOccupied = (placedItem != nil)
+
+        Button {
+            guard let decor = placingDecor else { return }
+            // Enforce one per category
+            var placed = room.placedItemIDs
+            // Remove any existing in this category
+            placed.removeAll { id in
+                items.first(where: { $0.id == id })?.category == category
+            }
+            placed.append(decor.id)
+            room.placedItemIDs = placed
+            try? modelContext.save()
+            gameStore.pendingDecorPlacement = nil
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isOccupied ? Color.gray.opacity(0.25) : Color.blue.opacity(isPickingDecor ? 0.2 : 0.1))
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isOccupied ? Color.gray : (isPickingDecor ? Color.blue : Color.secondary), lineWidth: 1)
+                VStack(spacing: 4) {
+                    if let item = placedItem {
+                        Text(emoji(for: item.id))
+                            .font(.system(size: 28))
+                    } else if let preview = placingDecor, preview.category == category {
+                        Text(emoji(for: preview.id))
+                            .font(.system(size: 28))
+                            .opacity(0.5)
+                    } else {
+                        Text(title)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(6)
+            }
+        }
+        .disabled(isOccupied && gameStore.pendingDecorPlacement != nil)
+        .frame(width: 80, height: 60)
     }
 }
 
