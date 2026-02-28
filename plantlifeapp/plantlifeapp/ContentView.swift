@@ -98,6 +98,11 @@ struct ContentView: View {
                 isShowingMenu = false
             }
         }
+        .onChange(of: gameStore.pendingDecorPlacement) { _, newValue in
+            if newValue != nil {
+                isShowingMenu = false
+            }
+        }
         .sheet(isPresented: $isShowingMenu) {
             NavigationStack {
                 List {

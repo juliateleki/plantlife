@@ -45,26 +45,7 @@ struct PlantsListView: View {
             }
         }
         .navigationTitle("Your Plants")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Place All") {
-                    var used = Set(plants.compactMap { $0.location })
-                    for plant in plants.filter({ $0.isOwned && $0.location == nil }) {
-                        if let free = PlantLocation.all.first(where: { !used.contains($0) }) {
-                            _ = gameStore.place(plant: plant, at: free, modelContext: modelContext)
-                            used.insert(free)
-                        }
-                    }
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Remove All") {
-                    for plant in plants where plant.location != nil {
-                        _ = gameStore.removeFromLocation(plant: plant, modelContext: modelContext)
-                    }
-                }
-            }
-        }
+        .toolbar {}
     }
 }
 

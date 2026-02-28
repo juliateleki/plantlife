@@ -29,7 +29,7 @@ struct RoomView: View {
     }
 
     private var ownedPlants: [Plant] {
-        plants.filter { $0.isOwned }
+        plants.filter { $0.isOwned && $0.location != nil }
     }
 
     // MARK: - Plant Visual Mapping
@@ -144,30 +144,7 @@ struct RoomView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 24))
                     .frame(height: 260)
 
-                VStack(spacing: 10) {
-                    // Show all plants visually
-                    if ownedPlants.isEmpty {
-                        Text("No plants owned yet")
-                            .foregroundStyle(Color.secondary)
-                    } else {
-                        // Display emojis for all owned plants
-                        HStack(spacing: 12) {
-                            ForEach(ownedPlants, id: \.id) { p in
-                                Text(plantEmoji(for: p.id, level: p.level))
-                                    .font(.system(size: 40))
-                                    .accessibilityLabel("\(p.name), level \(p.level)")
-                            }
-                        }
-                    }
-
-                    Text(placedSummary())
-                        .padding(.top, 8)
-                        .foregroundStyle(room.placedItemIDs.isEmpty ? Color.secondary : Color.primary)
-                }
-                .opacity((isPicking || gameStore.pendingDecorPlacement != nil) ? 0 : 1)
-                .allowsHitTesting(!(isPicking || gameStore.pendingDecorPlacement != nil))
-
-                // Decor placement slots (always visible, disabled unless picking decor)
+                // Decor placement slots (always visible)
                 HStack(spacing: 12) {
                     decorSlot(title: "Chair", category: .chair)
                     decorSlot(title: "Couch", category: .couch)

@@ -109,52 +109,7 @@ struct FurnitureListView: View {
             }
         }
         .navigationTitle("Your Furniture")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                if let room = rooms.first {
-                    Button("Place All") {
-                        var placed = room.placedItemIDs
-                        // Ensure at most one chair and one couch
-                        let ownedChairs = items.filter { $0.isOwned && $0.category == .chair }
-                        let ownedCouches = items.filter { $0.isOwned && $0.category == .couch }
-                        let ownedOthers = items.filter { $0.isOwned && $0.category != .chair && $0.category != .couch }
-
-                        // Pick first owned chair and couch if any
-                        if let chair = ownedChairs.first {
-                            placed.removeAll { id in
-                                if let d = items.first(where: { $0.id == id }) { return d.category == .chair }
-                                return false
-                            }
-                            if !placed.contains(chair.id) { placed.append(chair.id) }
-                        }
-                        if let couch = ownedCouches.first {
-                            placed.removeAll { id in
-                                if let d = items.first(where: { $0.id == id }) { return d.category == .couch }
-                                return false
-                            }
-                            if !placed.contains(couch.id) { placed.append(couch.id) }
-                        }
-                        // Add all other decor
-                        for item in ownedOthers {
-                            if !placed.contains(item.id) { placed.append(item.id) }
-                        }
-                        room.placedItemIDs = placed
-                        try? modelContext.save()
-                    }
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                if let room = rooms.first {
-                    Button("Remove All") {
-                        var placed = room.placedItemIDs
-                        let ownedIDs = Set(items.filter { $0.isOwned }.map { $0.id })
-                        placed.removeAll { ownedIDs.contains($0) }
-                        room.placedItemIDs = placed
-                        try? modelContext.save()
-                    }
-                }
-            }
-        }
+        .toolbar {}
         .onAppear { gameStore.start(modelContext: modelContext) }
         .onDisappear { gameStore.stop(modelContext: modelContext) }
     }
