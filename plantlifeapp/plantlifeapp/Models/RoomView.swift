@@ -164,16 +164,17 @@ struct RoomView: View {
                         .padding(.top, 8)
                         .foregroundStyle(room.placedItemIDs.isEmpty ? Color.secondary : Color.primary)
                 }
-                .opacity(isPicking ? 0 : 1)
-                .allowsHitTesting(!isPicking)
+                .opacity((isPicking || gameStore.pendingDecorPlacement != nil) ? 0 : 1)
+                .allowsHitTesting(!(isPicking || gameStore.pendingDecorPlacement != nil))
 
                 // Decor placement slots
-                HStack(spacing: 12) {
-                    decorSlot(title: "Chair", category: .chair)
-                    decorSlot(title: "Couch", category: .couch)
-                    decorSlot(title: "Rug", category: .rug)
+                if gameStore.pendingDecorPlacement != nil {
+                    HStack(spacing: 12) {
+                        decorSlot(title: "Chair", category: .chair)
+                        decorSlot(title: "Couch", category: .couch)
+                        decorSlot(title: "Rug", category: .rug)
+                    }
                 }
-                .opacity(gameStore.pendingDecorPlacement != nil ? 1 : 1)
 
                 // Tap targets for choosing locations
                 GeometryReader { geo in
