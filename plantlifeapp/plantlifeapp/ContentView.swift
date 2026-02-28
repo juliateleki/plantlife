@@ -41,7 +41,7 @@ struct ContentView: View {
         let player = players.first
         let room = rooms.first
 
-        let ownedPlants = plants.filter { $0.isOwned && $0.location != nil }
+        let ownedPlants = plants.filter { $0.isOwned }
 
         VStack(alignment: .leading, spacing: 16) {
 

@@ -29,7 +29,7 @@ struct RoomView: View {
     }
 
     private var ownedPlants: [Plant] {
-        plants.filter { $0.isOwned && $0.location != nil }
+        plants.filter { $0.isOwned }
     }
 
     // MARK: - Plant Visual Mapping
@@ -167,14 +167,14 @@ struct RoomView: View {
                 .opacity((isPicking || gameStore.pendingDecorPlacement != nil) ? 0 : 1)
                 .allowsHitTesting(!(isPicking || gameStore.pendingDecorPlacement != nil))
 
-                // Decor placement slots
-                if gameStore.pendingDecorPlacement != nil {
-                    HStack(spacing: 12) {
-                        decorSlot(title: "Chair", category: .chair)
-                        decorSlot(title: "Couch", category: .couch)
-                        decorSlot(title: "Rug", category: .rug)
-                    }
+                // Decor placement slots (always visible, disabled unless picking decor)
+                HStack(spacing: 12) {
+                    decorSlot(title: "Chair", category: .chair)
+                    decorSlot(title: "Couch", category: .couch)
+                    decorSlot(title: "Rug", category: .rug)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 10)
 
                 // Tap targets for choosing locations
                 GeometryReader { geo in
@@ -234,6 +234,8 @@ struct RoomView: View {
     @ViewBuilder
     private func decorSlot(title: String, category: DecorCategory) -> some View {
         let placingDecor = gameStore.pendingDecorPlacement
+        let isMatchingCategory = (placingDecor?.category == category)
+        let isPickingDecorMatch = (placingDecor != nil && isMatchingCategory)
         let isPickingDecor = (placingDecor != nil)
         let placedID = room.placedItemIDs.first { id in
             items.first(where: { $0.id == id })?.category == category
@@ -243,6 +245,7 @@ struct RoomView: View {
 
         Button {
             guard let decor = placingDecor else { return }
+            guard isMatchingCategory else { return }
             // Enforce one per category
             var placed = room.placedItemIDs
             // Remove any existing in this category
@@ -256,9 +259,9 @@ struct RoomView: View {
         } label: {
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isOccupied ? Color.gray.opacity(0.25) : Color.blue.opacity(isPickingDecor ? 0.2 : 0.1))
+                    .fill(isOccupied ? Color.gray.opacity(0.25) : Color.blue.opacity(isPickingDecorMatch ? 0.2 : 0.1))
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isOccupied ? Color.gray : (isPickingDecor ? Color.blue : Color.secondary), lineWidth: 1)
+                    .stroke(isOccupied ? Color.gray : (isPickingDecorMatch ? Color.blue : Color.secondary), lineWidth: 1)
                 VStack(spacing: 4) {
                     if let item = placedItem {
                         Text(emoji(for: item.id))
@@ -276,8 +279,8 @@ struct RoomView: View {
                 .padding(6)
             }
         }
-        .disabled(isOccupied && gameStore.pendingDecorPlacement != nil)
-        .frame(width: 80, height: 60)
+        .disabled(isOccupied || !isPickingDecorMatch)
+        .frame(width: 70, height: 48)
     }
 }
 
