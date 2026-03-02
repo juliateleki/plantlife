@@ -37,6 +37,126 @@ struct ContentView: View {
     @StateObject private var gameStore = GameStore()
     @State private var isShowingMenu = false
 
+    private func resetData() {
+        do {
+            // Delete all existing data
+            let players = try modelContext.fetch(FetchDescriptor<PlayerState>())
+            for p in players { modelContext.delete(p) }
+
+            let plants = try modelContext.fetch(FetchDescriptor<Plant>())
+            for pl in plants { modelContext.delete(pl) }
+
+            let rooms = try modelContext.fetch(FetchDescriptor<RoomState>())
+            for r in rooms { modelContext.delete(r) }
+
+            let items = try modelContext.fetch(FetchDescriptor<DecorItem>())
+            for it in items { modelContext.delete(it) }
+
+            try modelContext.save()
+
+            // Re-seed minimal world state (mirrors app seeding)
+            seedData()
+        } catch {
+            print("❌ Reset failed:", error)
+        }
+    }
+
+    private func seedData() {
+        // Player
+        modelContext.insert(
+            PlayerState(
+                coins: 100,
+                coinBank: 0,
+                lastActiveAt: .now
+            )
+        )
+
+        // Plants
+        modelContext.insert(
+            Plant(
+                id: "plant_pothos",
+                name: "Pothos",
+                isOwned: true,
+                purchasePrice: 20,
+                level: 1,
+                baseCoinsPerMinute: 0.1,
+                rateGrowth: 1.0,
+                growthSecondsPerLevel: 1800,
+                lastGrowthAt: .now
+            )
+        )
+
+        modelContext.insert(
+            Plant(
+                id: "plant_snake",
+                name: "Snake Plant",
+                isOwned: true,
+                purchasePrice: 20,
+                level: 1,
+                baseCoinsPerMinute: 0.05,
+                rateGrowth: 1.0,
+                growthSecondsPerLevel: 1800,
+                lastGrowthAt: .now
+            )
+        )
+
+        modelContext.insert(
+            Plant(
+                id: "plant_monstera",
+                name: "Monstera",
+                isOwned: true,
+                purchasePrice: 30,
+                level: 1,
+                baseCoinsPerMinute: 0.05,
+                rateGrowth: 1.0,
+                growthSecondsPerLevel: 1800,
+                lastGrowthAt: .now
+            )
+        )
+
+        modelContext.insert(
+            Plant(
+                id: "plant_ficus",
+                name: "Ficus",
+                isOwned: false,
+                purchasePrice: 30,
+                level: 1,
+                baseCoinsPerMinute: 0.07,
+                rateGrowth: 1.0,
+                growthSecondsPerLevel: 1800,
+                lastGrowthAt: .now
+            )
+        )
+
+        modelContext.insert(
+            Plant(
+                id: "plant_fern",
+                name: "Fern",
+                isOwned: false,
+                purchasePrice: 15,
+                level: 1,
+                baseCoinsPerMinute: 0.05,
+                rateGrowth: 1.0,
+                growthSecondsPerLevel: 1800,
+                lastGrowthAt: .now
+            )
+        )
+
+        // Room
+        modelContext.insert(RoomState(roomType: .living))
+
+        // Decor items
+        modelContext.insert(DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, category: .rug))
+        modelContext.insert(DecorItem(id: "lamp_01", name: "Warm Lamp", price: 8, roomType: .living, category: .other))
+        modelContext.insert(DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, category: .chair))
+        modelContext.insert(DecorItem(id: "chair_02", name: "Modern Chair", price: 18, roomType: .living, category: .chair))
+        modelContext.insert(DecorItem(id: "chair_03", name: "Armchair", price: 22, roomType: .living, category: .chair))
+        modelContext.insert(DecorItem(id: "couch_01", name: "Cozy Couch", price: 25, roomType: .living, category: .couch))
+        modelContext.insert(DecorItem(id: "couch_02", name: "Modern Sofa", price: 35, roomType: .living, category: .couch))
+
+        do { try modelContext.save() } catch { print("❌ Seed save failed:", error) }
+    }
+
     var body: some View {
         let player = players.first
         let room = rooms.first
@@ -127,6 +247,14 @@ struct ContentView: View {
                         )
                     }
                     NavigationLink("Games") { MinigamesDemoLauncher() }
+                    Section("Developer") {
+                        Button(role: .destructive) {
+                            resetData()
+                            isShowingMenu = false
+                        } label: {
+                            Text("Reset Data")
+                        }
+                    }
                 }
                 .navigationTitle("Menu")
                 .toolbar {
