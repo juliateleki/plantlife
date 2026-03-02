@@ -15,18 +15,8 @@ struct PlantlifeApp: App {
 
     init() {
         func makeStoreName() -> String {
-            #if DEBUG
-            // Auto-bump store name in debug to avoid migration churn during development.
-            // Format: Plantlife_YYYYMMDD_HHMMSS_build<build>
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyyMMdd_HHmmss"
-            let stamp = formatter.string(from: Date())
-            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "dev"
-            return "Plantlife_\(stamp)_build\(build)"
-            #else
-            // Stable name for release builds
+            // Use a stable store name in all builds so data persists between launches
             return "Plantlife"
-            #endif
         }
 
         let schema = Schema([
