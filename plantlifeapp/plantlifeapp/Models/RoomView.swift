@@ -161,18 +161,19 @@ struct RoomView: View {
                         let index: Int = locations.firstIndex(of: loc) ?? 0
                         let col: Int = index % 4
                         let row: Int = index / 4
-                        let origin: CGPoint = CGPoint(x: 20 + CGFloat(col) * (boxSize.width + 8),
-                                                     y: 20 + CGFloat(row) * (boxSize.height + 8))
-                        let rect: CGRect = CGRect(origin: origin, size: boxSize)
 
-                        let occupied = plants.contains { $0.location == Optional(loc) }
-                        let isPicking = (gameStore.pendingPlacement != nil)
+                        let x: CGFloat = 20 + CGFloat(col) * (boxSize.width + 8)
+                        let y: CGFloat = 20 + CGFloat(row) * (boxSize.height + 8)
+                        let rect = CGRect(x: x, y: y, width: boxSize.width, height: boxSize.height)
+
+                        let occupant: Plant? = plant(at: loc)
+                        let occupied: Bool = (occupant != nil)
+                        let pickingPlant: Bool = (gameStore.pendingPlacement != nil)
+                        let previewPlant: Plant? = gameStore.pendingPlacement
 
                         Button {
-                            guard let plant = gameStore.pendingPlacement else { return }
-                            // If occupied, return the existing plant to inventory first, then place the new one.
-                            if let existing = plant(at: loc) {
-                                // Return existing to inventory (unplace)
+                            guard let plant = previewPlant else { return }
+                            if let existing = occupant {
                                 existing.location = nil
                                 try? modelContext.save()
                             }
@@ -180,15 +181,18 @@ struct RoomView: View {
                             gameStore.pendingPlacement = nil
                         } label: {
                             ZStack {
+                                let fill = fillColor(occupied: occupied, isPicking: pickingPlant)
+                                let border = borderColor(occupied: occupied, isPicking: pickingPlant)
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(fillColor(occupied: occupied, isPicking: isPicking))
+                                    .fill(fill)
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(borderColor(occupied: occupied, isPicking: isPicking), lineWidth: 1)
-                                if let occupant = plant(at: loc) {
-                                    Text(plantEmoji(for: occupant.id, level: occupant.level))
+                                    .stroke(border, lineWidth: 1)
+
+                                if let occ = occupant {
+                                    Text(plantEmoji(for: occ.id, level: occ.level))
                                         .font(.system(size: 28))
                                         .transition(.scale)
-                                } else if let preview = gameStore.pendingPlacement, isPicking {
+                                } else if let preview = previewPlant, pickingPlant {
                                     Text(plantEmoji(for: preview.id, level: preview.level))
                                         .font(.system(size: 28))
                                         .opacity(0.5)
@@ -201,7 +205,7 @@ struct RoomView: View {
                                 }
                             }
                         }
-                        .disabled(!isPicking)
+                        .disabled(!pickingPlant)
                         .frame(width: rect.width, height: rect.height)
                         .position(x: rect.midX, y: rect.midY)
                     }
