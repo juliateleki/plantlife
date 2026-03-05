@@ -170,10 +170,14 @@ struct RoomView: View {
 
                         Button {
                             guard let plant = gameStore.pendingPlacement else { return }
-                            if !occupied {
-                                _ = gameStore.place(plant: plant, at: loc, modelContext: modelContext)
-                                gameStore.pendingPlacement = nil
+                            // If occupied, return the existing plant to inventory first, then place the new one.
+                            if let existing = plant(at: loc) {
+                                // Return existing to inventory (unplace)
+                                existing.location = nil
+                                try? modelContext.save()
                             }
+                            _ = gameStore.place(plant: plant, at: loc, modelContext: modelContext)
+                            gameStore.pendingPlacement = nil
                         } label: {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 8)
@@ -197,7 +201,7 @@ struct RoomView: View {
                                 }
                             }
                         }
-                        .disabled(occupied || !isPicking)
+                        .disabled(!isPicking)
                         .frame(width: rect.width, height: rect.height)
                         .position(x: rect.midX, y: rect.midY)
                     }
@@ -256,7 +260,7 @@ struct RoomView: View {
                 .padding(6)
             }
         }
-        .disabled(isOccupied || !isPickingDecorMatch)
+        .disabled(!isPickingDecorMatch)
         .frame(width: 70, height: 48)
     }
 }
