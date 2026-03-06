@@ -1,151 +1,97 @@
+#if canImport(XCTest)
+import XCTest
 import SwiftData
-import Testing
 @testable import plantlifeapp
 
-final class PlantLifeAppTests: TestCase {
-    var container: ModelContainer!
+final class GameStoreCoreTests: XCTestCase {
 
-    override func setUp() async throws {
-        try await super.setUp()
-        container = try ModelContainer(for: [Plant.self, Decor.self, Placement.self], inMemory: true)
+    @MainActor
+    private func makeInMemoryContext() throws -> ModelContext {
+        let schema = Schema([
+            PlayerState.self,
+            Plant.self,
+            DecorItem.self,
+            RoomState.self,
+        ])
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        return ModelContext(container)
     }
 
-    override func tearDown() async throws {
-        container = nil
-        try await super.tearDown()
+    @MainActor
+    func testPlantPlacementSwapsExistingOccupant() throws {
+        let ctx = try makeInMemoryContext()
+        let store = GameStore()
+
+        // Seed plants
+        let a = Plant(id: "plant_a", name: "A", isOwned: true, purchasePrice: 0, level: 1, baseCoinsPerMinute: 1.0)
+        let b = Plant(id: "plant_b", name: "B", isOwned: true, purchasePrice: 0, level: 1, baseCoinsPerMinute: 1.0)
+        ctx.insert(a)
+        ctx.insert(b)
+        try ctx.save()
+
+        // Place A at floor
+        XCTAssertTrue(store.place(plant: a, at: .floor, modelContext: ctx))
+        XCTAssertEqual(a.location, .floor)
+
+        // Place B at same location; A should be unplaced
+        XCTAssertTrue(store.place(plant: b, at: .floor, modelContext: ctx))
+        XCTAssertEqual(b.location, .floor)
+        XCTAssertNil(a.location)
     }
 
-    func testPlantPlacementSwapping() throws {
-        let context = container.mainContext
+    @MainActor
+    func testOfflineProgressAccrualCashesOut() throws {
+        let ctx = try makeInMemoryContext()
+        let store = GameStore()
 
-        let plantA = Plant(name: "PlantA")
-        let plantB = Plant(name: "PlantB")
-        let placement1 = Placement(position: CGPoint(x: 10, y: 20), plant: plantA)
-        let placement2 = Placement(position: CGPoint(x: 30, y: 40), plant: plantB)
+        // Player last active 10 minutes ago
+        let tenMinutes: TimeInterval = 600
+        let start = Date().addingTimeInterval(-tenMinutes)
+        let player = PlayerState(coins: 0, coinBank: 0, lastActiveAt: start)
+        ctx.insert(player)
 
-        try context.insert(plantA)
-        try context.insert(plantB)
-        try context.insert(placement1)
-        try context.insert(placement2)
-        try context.save()
+        // One owned, placed plant producing 6 coins/min (0.1/sec), nerfed to 25% => 0.025/sec
+        // Over 600s => 15 coins
+        let plant = Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 1, baseCoinsPerMinute: 6.0)
+        plant.location = .bookshelf1
+        ctx.insert(plant)
 
-        // Swap plants between placements
-        let tempPlant = placement1.plant
-        placement1.plant = placement2.plant
-        placement2.plant = tempPlant
+        // Also need a room record to mirror app environment
+        let room = RoomState(roomType: .living)
+        ctx.insert(room)
+        try ctx.save()
 
-        try context.save()
+        // Starting the store applies offline progress once
+        store.start(modelContext: ctx)
+        store.stop(modelContext: ctx)
 
-        XCTAssertEqual(placement1.plant.name, "PlantB", "Placement1 should now have PlantB")
-        XCTAssertEqual(placement2.plant.name, "PlantA", "Placement2 should now have PlantA")
+        XCTAssertGreaterThanOrEqual(player.coins, 15)
     }
 
-    func testOfflineProgressCoinAccrual() throws {
-        let context = container.mainContext
+    @MainActor
+    func testDecorOnePerCategory() throws {
+        let ctx = try makeInMemoryContext()
+        let store = GameStore()
 
-        let user = User(coins: 0, lastActiveDate: Date().addingTimeInterval(-3600 * 5)) // 5 hours ago
-        try context.insert(user)
-        try context.save()
+        let room = RoomState(roomType: .living)
+        let chair1 = DecorItem(id: "chair_01", name: "Comfy Chair", price: 10, roomType: .living, isOwned: true, category: .chair)
+        let chair2 = DecorItem(id: "chair_02", name: "Modern Chair", price: 12, roomType: .living, isOwned: true, category: .chair)
 
-        let now = Date()
-        let elapsedHours = now.timeIntervalSince(user.lastActiveDate) / 3600
-        let coinsPerHour = 10
-        let expectedCoins = Int(elapsedHours) * coinsPerHour
+        ctx.insert(room)
+        ctx.insert(chair1)
+        ctx.insert(chair2)
+        try ctx.save()
 
-        // Simulate offline coin accrual on app launch
-        user.accrueOfflineCoins(coinsPerHour: coinsPerHour, currentDate: now)
+        // Place first chair
+        store.togglePlace(item: chair1, in: room, modelContext: ctx)
+        XCTAssertTrue(room.placedItemIDs.contains(chair1.id))
 
-        try context.save()
-
-        XCTAssertEqual(user.coins, expectedCoins, "User should have accrued correct coins for offline progress")
-        XCTAssertEqual(user.lastActiveDate.timeIntervalSince(now).magnitude < 1, true, "User lastActiveDate should be updated to current time")
-    }
-
-    func testDecorOnePerCategoryEnforcement() throws {
-        let context = container.mainContext
-
-        let decor1 = Decor(id: UUID(), category: "Fountain")
-        let decor2 = Decor(id: UUID(), category: "Fountain")
-        let decor3 = Decor(id: UUID(), category: "Statue")
-
-        try context.insert(decor1)
-        try context.insert(decor3)
-        try context.save()
-
-        // Attempt to add a decor of an existing category
-        func addDecor(_ decor: Decor) throws {
-            let existing = context.fetch(Decor.self).first(where: { $0.category == decor.category })
-            if existing != nil {
-                throw DecorError.duplicateCategory
-            }
-            try context.insert(decor)
-            try context.save()
-        }
-
-        XCTAssertThrowsError(try addDecor(decor2)) { error in
-            XCTAssertEqual(error as? DecorError, DecorError.duplicateCategory, "Should not allow duplicate decor category")
-        }
-
-        // Adding decor of new category should succeed
-        let decor4 = Decor(id: UUID(), category: "Bench")
-        XCTAssertNoThrow(try addDecor(decor4))
-    }
-}
-
-// MARK: - Test Models and Extensions
-
-@Model
-final class Plant {
-    @Attribute(.unique) var id = UUID()
-    var name: String
-
-    init(name: String) {
-        self.name = name
+        // Place second chair; first should be removed
+        store.togglePlace(item: chair2, in: room, modelContext: ctx)
+        XCTAssertTrue(room.placedItemIDs.contains(chair2.id))
+        XCTAssertFalse(room.placedItemIDs.contains(chair1.id))
     }
 }
+#endif
 
-@Model
-final class Placement {
-    @Attribute(.unique) var id = UUID()
-    var position: CGPoint
-    var plant: Plant
-
-    init(position: CGPoint, plant: Plant) {
-        self.position = position
-        self.plant = plant
-    }
-}
-
-@Model
-final class Decor {
-    @Attribute(.unique) var id: UUID
-    var category: String
-
-    init(id: UUID, category: String) {
-        self.id = id
-        self.category = category
-    }
-}
-
-@Model
-final class User {
-    @Attribute(.unique) var id = UUID()
-    var coins: Int
-    var lastActiveDate: Date
-
-    init(coins: Int, lastActiveDate: Date) {
-        self.coins = coins
-        self.lastActiveDate = lastActiveDate
-    }
-
-    func accrueOfflineCoins(coinsPerHour: Int, currentDate: Date) {
-        let elapsedHours = Int(currentDate.timeIntervalSince(lastActiveDate) / 3600)
-        guard elapsedHours > 0 else { return }
-        coins += elapsedHours * coinsPerHour
-        lastActiveDate = currentDate
-    }
-}
-
-enum DecorError: Error, Equatable {
-    case duplicateCategory
-}
