@@ -223,7 +223,7 @@ struct ContentView: View {
                 isShowingMenu = false
             }
         }
-        .sheet(isPresented: $isShowingMenu) {
+        .fullScreenCover(isPresented: $isShowingMenu) {
             NavigationStack {
                 List {
                     NavigationLink("Your Plants") { PlantsListView() }
