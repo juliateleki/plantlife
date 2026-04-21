@@ -91,10 +91,28 @@ struct RoomView: View {
         default: return "📦"
         }
     }
-    
-    private func decorEmoji(for item: DecorItem?) -> String {
-        guard let item else { return "" }
-        return emoji(for: item.id)
+
+    @ViewBuilder
+    private func decorVisual(for item: DecorItem) -> some View {
+        switch item.id {
+        case "couch_01":
+            Image("classic-couch")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 58, maxHeight: 34)
+
+        case "chair_01":
+            Text("🪑")
+                .font(.system(size: 28))
+
+        case "rug_01":
+            Text("🟫")
+                .font(.system(size: 28))
+
+        default:
+            Text("📦")
+                .font(.system(size: 28))
+        }
     }
 
     private func fillColor(occupied: Bool, isPicking: Bool) -> Color {
@@ -144,7 +162,6 @@ struct RoomView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 24))
                     .frame(height: 260)
 
-                // Decor placement slots (always visible)
                 HStack(spacing: 12) {
                     decorSlot(title: "Chair", category: .chair)
                     decorSlot(title: "Couch", category: .couch)
@@ -153,7 +170,6 @@ struct RoomView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .padding(.bottom, 10)
 
-                // Tap targets for choosing locations
                 GeometryReader { geo in
                     let boxSize = CGSize(width: 70, height: 48)
                     let locations: [PlantLocation] = Array(PlantLocation.all)
@@ -231,9 +247,8 @@ struct RoomView: View {
         Button {
             guard let decor = placingDecor else { return }
             guard isMatchingCategory else { return }
-            // Enforce one per category
+
             var placed = room.placedItemIDs
-            // Remove any existing in this category
             placed.removeAll { id in
                 items.first(where: { $0.id == id })?.category == category
             }
@@ -249,11 +264,9 @@ struct RoomView: View {
                     .stroke(isOccupied ? Color.gray : (isPickingDecorMatch ? Color.blue : Color.secondary), lineWidth: 1)
                 VStack(spacing: 4) {
                     if let item = placedItem {
-                        Text(emoji(for: item.id))
-                            .font(.system(size: 28))
+                        decorVisual(for: item)
                     } else if let preview = placingDecor, preview.category == category {
-                        Text(emoji(for: preview.id))
-                            .font(.system(size: 28))
+                        decorVisual(for: preview)
                             .opacity(0.5)
                     } else {
                         Text(title)
@@ -281,4 +294,3 @@ struct RoomView: View {
     )
     .padding()
 }
-
