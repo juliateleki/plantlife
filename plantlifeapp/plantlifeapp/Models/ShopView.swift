@@ -160,6 +160,8 @@ struct ShopView: View {
             return "chair_01_thumb"
         case "couch_01":
             return "classic-couch"
+        case "couch_02":
+            return "modern-couch"
         case "rug_01":
             return "rug_01_thumb"
         default:

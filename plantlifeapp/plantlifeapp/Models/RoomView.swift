@@ -100,6 +100,12 @@ struct RoomView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: 58, maxHeight: 34)
+          
+        case "couch_02":
+            Image("modern-couch")
+              .resizable()
+              .scaledToFit()
+              .frame(maxWidth: 58, maxHeight: 34)
 
         case "chair_01":
             Text("🪑")
