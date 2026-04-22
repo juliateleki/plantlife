@@ -37,9 +37,14 @@ struct ContentView: View {
     @StateObject private var gameStore = GameStore()
     @State private var isShowingMenu = false
 
+    @State private var zoomScale: CGFloat = 1.0
+    @State private var lastZoomScale: CGFloat = 1.0
+
+    private let minZoom: CGFloat = 0.6
+    private let maxZoom: CGFloat = 3.0
+
     private func resetData() {
         do {
-            // Delete all existing data
             let players = try modelContext.fetch(FetchDescriptor<PlayerState>())
             for p in players { modelContext.delete(p) }
 
@@ -53,8 +58,6 @@ struct ContentView: View {
             for it in items { modelContext.delete(it) }
 
             try modelContext.save()
-
-            // Re-seed minimal world state (mirrors app seeding)
             seedData()
         } catch {
             print("❌ Reset failed:", error)
@@ -62,7 +65,6 @@ struct ContentView: View {
     }
 
     private func seedData() {
-        // Player
         modelContext.insert(
             PlayerState(
                 coins: 100,
@@ -71,7 +73,6 @@ struct ContentView: View {
             )
         )
 
-        // Plants
         modelContext.insert(
             Plant(
                 id: "plant_pothos",
@@ -142,10 +143,8 @@ struct ContentView: View {
             )
         )
 
-        // Room
         modelContext.insert(RoomState(roomType: .living))
 
-        // Decor items
         modelContext.insert(DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, category: .rug))
         modelContext.insert(DecorItem(id: "lamp_01", name: "Warm Lamp", price: 8, roomType: .living, category: .other))
         modelContext.insert(DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, category: .chair))
@@ -154,20 +153,21 @@ struct ContentView: View {
         modelContext.insert(DecorItem(id: "couch_01", name: "Cozy Couch", price: 25, roomType: .living, category: .couch))
         modelContext.insert(DecorItem(id: "couch_02", name: "Modern Sofa", price: 35, roomType: .living, category: .couch))
 
-        do { try modelContext.save() } catch { print("❌ Seed save failed:", error) }
+        do {
+            try modelContext.save()
+        } catch {
+            print("❌ Seed save failed:", error)
+        }
     }
 
     var body: some View {
         let player = players.first
-        let room = rooms.first
 
-        let ownedPlants = plants.filter { $0.isOwned }
-
-        VStack(alignment: .leading, spacing: 16) {
-
+        VStack(spacing: 12) {
             HStack {
                 Text("🌱 PlantLife")
-                    .font(.title2).bold()
+                    .font(.title2)
+                    .bold()
 
                 Spacer()
 
@@ -184,44 +184,59 @@ struct ContentView: View {
                         .padding(.leading, 8)
                 }
             }
+            .padding(.horizontal)
+            .padding(.top, 8)
 
-            if let room {
-                RoomView(
-                    plants: ownedPlants,
-                    room: room,
-                    items: items,
-                    gameStore: gameStore,
-                    onTogglePlace: { item in
-                        gameStore.togglePlace(
-                            item: item,
-                            in: room,
-                            modelContext: modelContext
-                        )
+            ApartmentCanvasView(
+                zoomScale: $zoomScale,
+                lastZoomScale: $lastZoomScale,
+                minZoom: minZoom,
+                maxZoom: maxZoom
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            HStack(spacing: 12) {
+                Button {
+                    withAnimation(.easeInOut) {
+                        zoomScale = max(minZoom, zoomScale - 0.2)
+                        lastZoomScale = zoomScale
                     }
-                )
-            } else {
-                Text("Loading world…")
-                    .foregroundStyle(.secondary)
-            }
+                } label: {
+                    Image(systemName: "minus.magnifyingglass")
+                        .font(.title3)
+                        .frame(width: 44, height: 44)
+                        .background(.thinMaterial)
+                        .clipShape(Circle())
+                }
 
-            Spacer()
+                Button {
+                    withAnimation(.easeInOut) {
+                        zoomScale = min(maxZoom, zoomScale + 0.2)
+                        lastZoomScale = zoomScale
+                    }
+                } label: {
+                    Image(systemName: "plus.magnifyingglass")
+                        .font(.title3)
+                        .frame(width: 44, height: 44)
+                        .background(.thinMaterial)
+                        .clipShape(Circle())
+                }
+
+                Button("Reset View") {
+                    withAnimation(.easeInOut) {
+                        zoomScale = 1.0
+                        lastZoomScale = 1.0
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(.bottom, 12)
         }
-        .padding()
         .onAppear {
             gameStore.start(modelContext: modelContext)
         }
         .onDisappear {
             gameStore.stop(modelContext: modelContext)
-        }
-        .onChange(of: gameStore.pendingPlacement) { _, newValue in
-            if newValue != nil {
-                isShowingMenu = false
-            }
-        }
-        .onChange(of: gameStore.pendingDecorPlacement) { _, newValue in
-            if newValue != nil {
-                isShowingMenu = false
-            }
         }
         .fullScreenCover(isPresented: $isShowingMenu) {
             NavigationStack {
@@ -247,6 +262,7 @@ struct ContentView: View {
                         )
                     }
                     NavigationLink("Games") { MinigamesDemoLauncher() }
+
                     Section("Developer") {
                         Button(role: .destructive) {
                             resetData()
@@ -268,48 +284,57 @@ struct ContentView: View {
     }
 }
 
-private struct PlantCard: View {
-    let plant: Plant
-    let isSelected: Bool
-    let onTap: () -> Void
+private struct ApartmentCanvasView: View {
+    @Binding var zoomScale: CGFloat
+    @Binding var lastZoomScale: CGFloat
+
+    let minZoom: CGFloat
+    let maxZoom: CGFloat
 
     var body: some View {
-        VStack(spacing: 6) {
-            Text(emojiForStage(plant.growthStageLabel))
-                .font(.system(size: 34))
+        GeometryReader { geo in
+            let baseWidth = max(geo.size.width * 2.2, 1400)
+            let baseHeight = max(geo.size.height * 0.95, 800)
 
-            Text(plant.name)
-                .font(.caption)
-                .bold()
-                .lineLimit(1)
+            ScrollView([.horizontal, .vertical], showsIndicators: true) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color.clear)
 
-            Text("Lvl \(plant.level)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(width: 110)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
-        .background(.thinMaterial)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(isSelected ? .green : .clear, lineWidth: 2)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .onTapGesture { onTap() }
-    }
-
-    private func emojiForStage(_ stage: String) -> String {
-        switch stage {
-        case "Sprout": return "🌱"
-        case "Baby": return "🪴"
-        case "Growing": return "🌿"
-        default: return "🌳"
+                    Image("apartment")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: baseWidth)
+                        .scaleEffect(zoomScale, anchor: .center)
+                        .padding(60)
+                }
+                .frame(
+                    width: (baseWidth + 120) * zoomScale,
+                    height: (baseHeight + 120) * zoomScale
+                )
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(.thinMaterial)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .padding(.horizontal)
+            .gesture(
+                MagnificationGesture()
+                    .onChanged { value in
+                        let delta = value / lastZoomScale
+                        lastZoomScale = value
+                        zoomScale = min(max(zoomScale * delta, minZoom), maxZoom)
+                    }
+                    .onEnded { _ in
+                        lastZoomScale = 1.0
+                    }
+            )
         }
     }
 }
 
-#Preview("ContentView – Preview data") {
+#Preview("ContentView – Apartment") {
     let schema = Schema([
         PlayerState.self,
         Plant.self,
@@ -319,104 +344,12 @@ private struct PlantCard: View {
     let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: schema, configurations: [config])
     let context = ModelContext(container)
-    let player = PlayerState(coins: 10234, coinBank: 0, lastActiveAt: .now)
-    let room = RoomState(roomType: .living)
-    let pothos = Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 5, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
-    let snake = Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 3, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
-    context.insert(player)
-    context.insert(room)
-    context.insert(pothos)
-    context.insert(snake)
 
-    // Assign example locations before saving
-    pothos.location = .bookshelf1
-    snake.location = .floor
+    context.insert(PlayerState(coins: 10234, coinBank: 0, lastActiveAt: .now))
+    context.insert(RoomState(roomType: .living))
 
     try! context.save()
 
     return ContentView()
         .modelContainer(container)
 }
-
-#Preview("Your Plants – Preview data") {
-    let schema = Schema([
-        PlayerState.self,
-        Plant.self,
-        DecorItem.self,
-        RoomState.self,
-    ])
-    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: schema, configurations: [config])
-    let context = ModelContext(container)
-    // Seed some plants, including Monstera
-    let pothos = Plant(id: "plant_pothos", name: "Pothos", isOwned: true, purchasePrice: 0, level: 5, baseCoinsPerMinute: 0.1, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
-    let snake = Plant(id: "plant_snake", name: "Snake Plant", isOwned: true, purchasePrice: 20, level: 3, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
-    let monstera = Plant(id: "plant_monstera", name: "Monstera", isOwned: true, purchasePrice: 30, level: 8, baseCoinsPerMinute: 0.05, rateGrowth: 1.0, growthSecondsPerLevel: 1800, lastGrowthAt: .now)
-
-    context.insert(pothos)
-    context.insert(snake)
-    context.insert(monstera)
-    try! context.save()
-
-    // Pull plants back for the list
-    let plants = (try? context.fetch(FetchDescriptor<Plant>())) ?? []
-
-    return NavigationStack {
-        List {
-            Section("Your Plants") {
-                ForEach(plants.filter { $0.isOwned }) { plant in
-                    HStack {
-                        Text(plant.name).bold()
-                        Spacer()
-                        Text("Lvl \(plant.level)")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-        .navigationTitle("Your Plants")
-    }
-    .modelContainer(container)
-}
-
-#Preview("Your Furniture – Preview data") {
-    let schema = Schema([
-        PlayerState.self,
-        Plant.self,
-        DecorItem.self,
-        RoomState.self,
-    ])
-    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: schema, configurations: [config])
-    let context = ModelContext(container)
-    // Seed some decor items
-    let rug = DecorItem(id: "rug_01", name: "Cozy Rug", price: 5, roomType: .living, isOwned: true)
-    let chair = DecorItem(id: "chair_01", name: "Comfy Chair", price: 12, roomType: .living, isOwned: false)
-    let couch = DecorItem(id: "couch_01", name: "Cozy Couch", price: 25, roomType: .living, isOwned: true)
-
-    context.insert(rug)
-    context.insert(chair)
-    context.insert(couch)
-    try! context.save()
-
-    // Fetch items back for the list
-    let items = (try? context.fetch(FetchDescriptor<DecorItem>())) ?? []
-
-    return NavigationStack {
-        List {
-            Section("Your Furniture") {
-                ForEach(items.filter { $0.isOwned }) { item in
-                    HStack {
-                        Text(item.name).bold()
-                        Spacer()
-                        Text("Owned")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-        .navigationTitle("Your Furniture")
-    }
-    .modelContainer(container)
-}
-
