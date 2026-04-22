@@ -162,6 +162,7 @@ struct ContentView: View {
 
     var body: some View {
         let player = players.first
+        let ownedPlants = plants.filter { $0.isOwned }
 
         VStack(spacing: 12) {
             HStack {
@@ -188,6 +189,9 @@ struct ContentView: View {
             .padding(.top, 8)
 
             ApartmentCanvasView(
+                plants: ownedPlants,
+                gameStore: gameStore,
+                modelContext: modelContext,
                 zoomScale: $zoomScale,
                 lastZoomScale: $lastZoomScale,
                 minZoom: minZoom,
@@ -285,19 +289,98 @@ struct ContentView: View {
 }
 
 private struct ApartmentCanvasView: View {
+    let plants: [Plant]
+    @ObservedObject var gameStore: GameStore
+    let modelContext: ModelContext
+
     @Binding var zoomScale: CGFloat
     @Binding var lastZoomScale: CGFloat
 
     let minZoom: CGFloat
     let maxZoom: CGFloat
 
+    private let apartmentAspectRatio: CGFloat = 7119.07 / 1531.66
+
+    private struct BookshelfSpot: Identifiable {
+        let location: PlantLocation
+        let x: CGFloat
+        let y: CGFloat
+
+        var id: String { location.rawValue }
+    }
+
+    private let bookshelfSpots: [BookshelfSpot] = [
+        BookshelfSpot(location: .bookshelf1, x: 0.456, y: 0.137),
+        BookshelfSpot(location: .bookshelf2, x: 0.492, y: 0.137),
+
+        BookshelfSpot(location: .bookshelf3, x: 0.456, y: 0.296),
+        BookshelfSpot(location: .bookshelf4, x: 0.492, y: 0.296),
+
+        BookshelfSpot(location: .bookshelf5, x: 0.456, y: 0.456),
+        BookshelfSpot(location: .bookshelf6, x: 0.492, y: 0.456),
+
+        BookshelfSpot(location: .bookshelf7, x: 0.456, y: 0.616),
+        BookshelfSpot(location: .bookshelf8, x: 0.492, y: 0.616)
+    ]
+
+    private func plant(at location: PlantLocation) -> Plant? {
+        plants.first { $0.location == location }
+    }
+
+    private func plantEmoji(for plant: Plant) -> String {
+        switch plant.id {
+        case "plant_pothos":
+            switch plant.level {
+            case 1...3: return "🌱"
+            case 4...7: return "🪴"
+            case 8...14: return "🌿"
+            default: return "🌳"
+            }
+
+        case "plant_monstera":
+            switch plant.level {
+            case 1...3: return "🌱"
+            case 4...7: return "🌿"
+            case 8...14: return "🌴"
+            default: return "🌳"
+            }
+
+        case "plant_snake":
+            switch plant.level {
+            case 1...3: return "🌱"
+            case 4...7: return "🌾"
+            case 8...14: return "🌵"
+            default: return "🌳"
+            }
+
+        case "plant_ficus":
+            switch plant.level {
+            case 1...3: return "🌱"
+            case 4...7: return "🌿"
+            case 8...14: return "🌴"
+            default: return "🌳"
+            }
+
+        case "plant_fern":
+            switch plant.level {
+            case 1...3: return "🌱"
+            case 4...7: return "🌿"
+            case 8...14: return "🌾"
+            default: return "🌳"
+            }
+
+        default:
+            return "🪴"
+        }
+    }
+
     var body: some View {
         GeometryReader { geo in
             let viewportWidth = geo.size.width
             let viewportHeight = geo.size.height
 
-            let baseWidth = max(viewportWidth * 2.2, 1400)
-            let baseHeight = viewportHeight * 0.92
+            let imageWidth = max(viewportWidth * 2.2, 1400)
+            let imageHeight = imageWidth / apartmentAspectRatio
 
             ScrollView(.horizontal, showsIndicators: true) {
                 HStack(spacing: 0) {
@@ -306,20 +389,64 @@ private struct ApartmentCanvasView: View {
                     ZStack {
                         Image("apartment")
                             .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: baseWidth, height: baseHeight)
-                            .scaleEffect(zoomScale, anchor: .center)
+                            .frame(width: imageWidth, height: imageHeight)
+
+                        ForEach(bookshelfSpots) { spot in
+                            let occupant = plant(at: spot.location)
+                            let pendingPlant = gameStore.pendingPlacement
+                            let spotSize: CGFloat = 44
+
+                            Button {
+                                guard let pendingPlant else { return }
+
+                                if let existing = occupant {
+                                    existing.location = nil
+                                    try? modelContext.save()
+                                }
+
+                                _ = gameStore.place(
+                                    plant: pendingPlant,
+                                    at: spot.location,
+                                    modelContext: modelContext
+                                )
+
+                                gameStore.pendingPlacement = nil
+                            } label: {
+                                ZStack {
+                                    if let occupant {
+                                        Text(plantEmoji(for: occupant))
+                                            .font(.system(size: 34))
+                                    } else if let pendingPlant {
+                                        Text(plantEmoji(for: pendingPlant))
+                                            .font(.system(size: 34))
+                                            .opacity(0.45)
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(Color.green.opacity(0.10))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 10)
+                                                    .stroke(Color.green.opacity(0.30), lineWidth: 1)
+                                            )
+                                    }
+                                }
+                                .frame(width: spotSize, height: spotSize)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(gameStore.pendingPlacement == nil)
+                            .position(
+                                x: spot.x * imageWidth,
+                                y: spot.y * imageHeight
+                            )
+                        }
                     }
-                    .frame(
-                        width: baseWidth * zoomScale,
-                        height: viewportHeight
-                    )
+                    .frame(width: imageWidth, height: imageHeight)
+                    .scaleEffect(zoomScale, anchor: .center)
 
                     Spacer(minLength: 0)
                 }
                 .frame(
                     minWidth: viewportWidth,
-                    minHeight: viewportHeight,
+                    minHeight: max(viewportHeight, imageHeight),
                     alignment: .center
                 )
             }
