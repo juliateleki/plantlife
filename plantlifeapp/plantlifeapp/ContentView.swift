@@ -293,26 +293,37 @@ private struct ApartmentCanvasView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let baseWidth = max(geo.size.width * 2.2, 1400)
-            let baseHeight = max(geo.size.height * 0.95, 800)
+            let viewportWidth = geo.size.width
+            let viewportHeight = geo.size.height
 
-            ScrollView([.horizontal, .vertical], showsIndicators: true) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 24)
-                        .fill(Color.clear)
+            let baseWidth = max(viewportWidth * 2.2, 1400)
+            let baseHeight = viewportHeight * 0.92
 
-                    Image("apartment")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: baseWidth)
-                        .scaleEffect(zoomScale, anchor: .center)
-                        .padding(60)
+            ScrollView(.horizontal, showsIndicators: true) {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+
+                    ZStack {
+                        Image("apartment")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: baseWidth, height: baseHeight)
+                            .scaleEffect(zoomScale, anchor: .center)
+                    }
+                    .frame(
+                        width: baseWidth * zoomScale,
+                        height: viewportHeight
+                    )
+
+                    Spacer(minLength: 0)
                 }
                 .frame(
-                    width: (baseWidth + 120) * zoomScale,
-                    height: (baseHeight + 120) * zoomScale
+                    minWidth: viewportWidth,
+                    minHeight: viewportHeight,
+                    alignment: .center
                 )
             }
+            .scrollClipDisabled()
             .background(
                 RoundedRectangle(cornerRadius: 24)
                     .fill(.thinMaterial)
