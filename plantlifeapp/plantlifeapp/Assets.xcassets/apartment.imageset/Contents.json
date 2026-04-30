@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "apartment.svg",
+      "filename" : "apartment2.svg",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "apartment 1.svg",
+      "filename" : "apartment2 1.svg",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "apartment 2.svg",
+      "filename" : "apartment2 2.svg",
       "idiom" : "universal",
       "scale" : "3x"
     }
