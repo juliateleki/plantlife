@@ -265,7 +265,7 @@ struct ContentView: View {
                             }
                         )
                     }
-                    NavigationLink("Games") { MinigamesDemoLauncher() }
+//                    NavigationLink("Games") { MinigamesDemoLauncher() }
 
                     Section("Developer") {
                         Button(role: .destructive) {
